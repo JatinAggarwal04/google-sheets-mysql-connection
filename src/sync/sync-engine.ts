@@ -76,12 +76,20 @@ export class SyncEngine extends EventEmitter {
             // Perform initial sync to set up schema
             await this.performInitialSync();
 
-            // Set up CDC listener for MySQL changes
+            // Set up CDC listener for MySQL changes (optional - for bidirectional sync)
             this.cdcListener.on('change', (event: ChangeEvent) => {
                 this.handleMySQLChange(event);
             });
 
-            await this.cdcListener.start();
+            try {
+                await this.cdcListener.start();
+                logger.info('CDC listener started - bidirectional sync enabled');
+            } catch (cdcError) {
+                logger.warn('CDC listener failed to start - running in one-way mode (Sheet → MySQL only)', {
+                    error: cdcError instanceof Error ? cdcError.message : String(cdcError),
+                });
+                // Continue without CDC - Sheet changes will still sync to MySQL
+            }
 
             // Start processing loop
             this.startProcessingLoop();

@@ -3,6 +3,9 @@
  * Main entry point
  */
 
+// Load environment variables FIRST before anything else
+import 'dotenv/config';
+
 import { getConfig } from './config/index.js';
 import { createComponentLogger, logInfo, logError } from './utils/logger.js';
 import { isOperationalError } from './utils/errors.js';

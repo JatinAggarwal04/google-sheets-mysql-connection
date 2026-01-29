@@ -103,8 +103,17 @@ export class SchemaManager {
             '`_row_number` INT',
         ];
 
-        // Add user-defined columns
+        // Reserved column names that we manage internally
+        const reservedColumns = new Set(['id', '_row_number', '_sync_source', '_sync_timestamp', '_created_at', '_updated_at']);
+
+        // Add user-defined columns (skipping reserved ones)
         for (const col of columns) {
+            // Skip if this is a reserved column name
+            if (reservedColumns.has(col.name.toLowerCase())) {
+                logger.debug('Skipping reserved column from Sheet', { columnName: col.name });
+                continue;
+            }
+
             const mysqlType = TYPE_MAPPING[col.type];
             const nullable = col.nullable !== false ? 'NULL' : 'NOT NULL';
             const defaultVal = col.defaultValue !== undefined
