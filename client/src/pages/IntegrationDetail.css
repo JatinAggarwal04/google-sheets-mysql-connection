@@ -1,0 +1,233 @@
+/* ===========================================
+   Integration Detail Page Styles
+   =========================================== */
+
+.integration-detail {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Header */
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.header-left h1 {
+    font-size: var(--font-size-2xl);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+/* Sections */
+.detail-section {
+    margin-bottom: var(--space-8);
+}
+
+.detail-section h2 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-5);
+}
+
+/* Overview */
+.overview-grid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--space-5);
+}
+
+.overview-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-6);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    min-width: 200px;
+}
+
+.overview-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.overview-icon.mysql {
+    background: linear-gradient(135deg, #00758f, #f29111);
+}
+
+.overview-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.overview-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.overview-value {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.overview-arrow {
+    color: var(--color-primary);
+}
+
+.overview-meta {
+    display: flex;
+    gap: var(--space-8);
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.meta-label {
+    color: var(--text-muted);
+}
+
+.meta-value {
+    font-weight: 500;
+}
+
+/* Mappings */
+.mappings-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.mappings-card code {
+    background: var(--bg-tertiary);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+}
+
+.pk-icon {
+    color: var(--color-success);
+}
+
+/* Logs */
+.no-logs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-10);
+    background: var(--glass-bg);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-xl);
+    color: var(--text-muted);
+}
+
+.no-logs p {
+    margin-top: var(--space-3);
+}
+
+.logs-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    overflow-x: auto;
+}
+
+.logs-table th,
+.logs-table td {
+    white-space: nowrap;
+    font-size: var(--font-size-sm);
+}
+
+.log-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.log-icon.success {
+    color: var(--color-success);
+}
+
+.log-icon.error {
+    color: var(--color-error);
+}
+
+.log-icon.pending {
+    color: var(--color-info);
+}
+
+.count-insert {
+    color: var(--color-success);
+}
+
+.count-update {
+    color: var(--color-info);
+}
+
+.count-delete {
+    color: var(--color-error);
+}
+
+/* Error State */
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.error-state h3 {
+    margin: var(--space-4) 0 var(--space-2);
+}
+
+.error-state p {
+    margin-bottom: var(--space-6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .overview-grid {
+        flex-direction: column;
+    }
+
+    .overview-arrow {
+        transform: rotate(90deg);
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
