@@ -690,6 +690,16 @@ export class SyncEngine extends EventEmitter {
         if (clean.id === '' || clean.id === null) {
             delete clean.id;
         }
+
+        // Convert ISO date strings to Date objects for MySQL
+        for (const [key, value] of Object.entries(clean)) {
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                    clean[key] = date;
+                }
+            }
+        }
         return clean;
     }
 

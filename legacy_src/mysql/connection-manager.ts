@@ -148,6 +148,27 @@ export class ConnectionManager {
     }
 
     /**
+     * Get a specific connection by ID (Internal use, bypass user check)
+     */
+    async getConnectionInternal(connectionId: string): Promise<ConnectionConfig | null> {
+        const supabase = getSupabaseClient();
+
+        const { data, error } = await (supabase
+            .from('user_integrations') as any)
+            .select('*')
+            .eq('id', connectionId)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            logger.error('Failed to fetch connection internal', { error });
+            throw new DatabaseError('Failed to fetch connection internal');
+        }
+
+        return this.mapSupabaseToConfig(data);
+    }
+
+    /**
      * Delete a connection
      */
     async deleteConnection(userId: string, connectionId: string): Promise<void> {

@@ -550,7 +550,17 @@ function NewConnectionModal({ onClose, onCreate }: { onClose: () => void; onCrea
                             placeholder="From Sheet URL: docs.google.com/spreadsheets/d/{ID}/..."
                             className="form-control"
                         />
-                        <small>Paste the ID from your Google Sheet URL</small>
+                        <div className="info-box">
+                            <small>
+                                <strong>⚠️ Privacy & Permissions:</strong> You do NOT need to share with "Everyone".
+                                <br />
+                                Please share your Sheet with our Service Account:
+                                <br />
+                                <code className="select-all">sync-service-account@sheets-mysql-sync-485808.iam.gserviceaccount.com</code>
+                                <br />
+                                (Give "Editor" role)
+                            </small>
+                        </div>
                     </div>
                     <div className="form-group">
                         <label htmlFor="connSheetName">Sheet Name (Tab)</label>
