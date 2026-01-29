@@ -80,6 +80,23 @@ export const api = {
             request<{ headers: string[]; rows: Record<string, unknown>[] }>(
                 `/google/spreadsheets/${spreadsheetId}/sheets/${encodeURIComponent(sheetName)}/data?connectionId=${connectionId}`
             ),
+
+        insertRow: (connectionId: string, spreadsheetId: string, sheetName: string, headers: string[], row: Record<string, unknown>) =>
+            request(`/google/spreadsheets/${spreadsheetId}/sheets/${encodeURIComponent(sheetName)}/rows?connectionId=${connectionId}`, {
+                method: 'POST',
+                body: JSON.stringify({ headers, row }),
+            }),
+
+        updateRow: (connectionId: string, spreadsheetId: string, sheetName: string, rowIndex: number, headers: string[], row: Record<string, unknown>) =>
+            request(`/google/spreadsheets/${spreadsheetId}/sheets/${encodeURIComponent(sheetName)}/rows/${rowIndex}?connectionId=${connectionId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ headers, row }),
+            }),
+
+        deleteRow: (connectionId: string, spreadsheetId: string, sheetName: string, rowIndex: number) =>
+            request(`/google/spreadsheets/${spreadsheetId}/sheets/${encodeURIComponent(sheetName)}/rows/${rowIndex}?connectionId=${connectionId}`, {
+                method: 'DELETE',
+            }),
     },
 
     mysql: {
@@ -125,6 +142,28 @@ export const api = {
             request<Array<{ column: string; type: string; nullable: boolean; key: string }>>(
                 `/mysql/connections/${connectionId}/tables/${tableName}/schema`
             ),
+
+        getTableData: (connectionId: string, tableName: string) =>
+            request<{ columns: string[]; rows: Record<string, unknown>[] }>(
+                `/mysql/connections/${connectionId}/tables/${tableName}/data`
+            ),
+
+        insertRow: (connectionId: string, tableName: string, row: Record<string, unknown>) =>
+            request(`/mysql/connections/${connectionId}/tables/${tableName}/rows`, {
+                method: 'POST',
+                body: JSON.stringify(row),
+            }),
+
+        updateRow: (connectionId: string, tableName: string, primaryKeyColumn: string, primaryKeyValue: string, data: Record<string, unknown>) =>
+            request(`/mysql/connections/${connectionId}/tables/${tableName}/rows/${encodeURIComponent(primaryKeyValue)}`, {
+                method: 'PUT',
+                body: JSON.stringify({ primaryKeyColumn, data }),
+            }),
+
+        deleteRow: (connectionId: string, tableName: string, primaryKeyColumn: string, primaryKeyValue: string) =>
+            request(`/mysql/connections/${connectionId}/tables/${tableName}/rows/${encodeURIComponent(primaryKeyValue)}?primaryKeyColumn=${encodeURIComponent(primaryKeyColumn)}`, {
+                method: 'DELETE',
+            }),
     },
 
     integrations: {
@@ -150,6 +189,8 @@ export const api = {
                 sync_direction: string;
                 status: string;
                 last_sync_at: string | null;
+                google_connection_id: string;
+                mysql_connection_id: string;
             };
             mappings: Array<{
                 id: string;

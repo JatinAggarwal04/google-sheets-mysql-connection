@@ -37,6 +37,7 @@ export function DashboardPage() {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     useEffect(() => {
         loadIntegrations();
@@ -74,13 +75,13 @@ export function DashboardPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this integration?')) return;
-
         try {
             await api.integrations.delete(id);
             await loadIntegrations();
         } catch (err) {
             setError('Failed to delete integration');
+        } finally {
+            setDeleteConfirmId(null);
         }
     };
 
@@ -274,7 +275,7 @@ export function DashboardPage() {
 
                                     <button
                                         className="btn btn-ghost btn-sm btn-danger-text"
-                                        onClick={() => handleDelete(integration.id)}
+                                        onClick={() => setDeleteConfirmId(integration.id)}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -284,6 +285,24 @@ export function DashboardPage() {
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmId && (
+                <div className="delete-confirm-overlay">
+                    <div className="delete-confirm-modal">
+                        <h4>Confirm Delete Integration</h4>
+                        <p>Are you sure you want to delete this integration? This action cannot be undone.</p>
+                        <div className="delete-confirm-actions">
+                            <button className="btn btn-secondary" onClick={() => setDeleteConfirmId(null)}>
+                                Cancel
+                            </button>
+                            <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirmId)}>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

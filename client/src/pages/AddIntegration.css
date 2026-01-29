@@ -11,9 +11,9 @@
 .wizard-progress {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     margin-bottom: var(--space-10);
-    padding: var(--space-6);
+    padding: var(--space-5) var(--space-6);
     background: var(--glass-bg);
     border-radius: var(--radius-xl);
     border: 1px solid var(--glass-border);
@@ -22,13 +22,18 @@
 .wizard-step {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    position: relative;
+    gap: var(--space-2);
+    flex: 1;
+}
+
+.wizard-step:last-child {
+    flex: 0;
 }
 
 .wizard-step-icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
     border-radius: var(--radius-full);
     background: var(--bg-tertiary);
     border: 2px solid var(--border-color);
@@ -56,7 +61,8 @@
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: var(--text-muted);
-    display: none;
+    white-space: nowrap;
+    margin-right: var(--space-2);
 }
 
 .wizard-step.active .wizard-step-label,
@@ -64,20 +70,20 @@
     color: var(--text-primary);
 }
 
-@media (min-width: 768px) {
+@media (max-width: 900px) {
     .wizard-step-label {
-        display: block;
+        display: none;
     }
 }
 
 .wizard-step-line {
-    width: 60px;
+    flex: 1;
     height: 2px;
     background: var(--border-color);
-    margin: 0 var(--space-3);
+    min-width: 20px;
+    max-width: 60px;
 }
 
-.wizard-step.completed+.wizard-step .wizard-step-line,
 .wizard-step.completed .wizard-step-line {
     background: var(--color-success);
 }

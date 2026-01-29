@@ -161,4 +161,186 @@ router.get('/spreadsheets/:spreadsheetId/sheets/:sheetName/data', async (req: Re
     }
 });
 
+/**
+ * Validates row data for null/empty values
+ */
+function validateRowData(row: Record<string, unknown>): { valid: boolean; emptyFields: string[] } {
+    const emptyFields: string[] = [];
+    for (const [key, value] of Object.entries(row)) {
+        if (value === null || value === undefined || value === '') {
+            emptyFields.push(key);
+        }
+    }
+    return { valid: emptyFields.length === 0, emptyFields };
+}
+
+/**
+ * POST /api/google/spreadsheets/:spreadsheetId/sheets/:sheetName/rows
+ * Append row to sheet
+ */
+router.post('/spreadsheets/:spreadsheetId/sheets/:sheetName/rows', async (req: Request, res: Response) => {
+    try {
+        const { connectionId } = req.query;
+
+        if (!connectionId) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'connectionId is required' },
+            });
+        }
+
+        const { headers, row } = req.body;
+        if (!headers || !row) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'headers and row are required' },
+            });
+        }
+
+        // Validate for null/empty values
+        const validation = validateRowData(row);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: `Cannot save row with empty values. Please fill in: ${validation.emptyFields.join(', ')}`,
+                    emptyFields: validation.emptyFields,
+                },
+            });
+        }
+
+        await googleSheets.appendSheetRows(
+            connectionId as string,
+            req.params.spreadsheetId,
+            decodeURIComponent(req.params.sheetName),
+            headers,
+            [row]
+        );
+
+        res.status(201).json({
+            success: true,
+            data: { message: 'Row added successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to add sheet row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to add row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
+/**
+ * PUT /api/google/spreadsheets/:spreadsheetId/sheets/:sheetName/rows/:rowIndex
+ * Update row in sheet (rowIndex is 1-indexed, 2 = first data row)
+ */
+router.put('/spreadsheets/:spreadsheetId/sheets/:sheetName/rows/:rowIndex', async (req: Request, res: Response) => {
+    try {
+        const { connectionId } = req.query;
+
+        if (!connectionId) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'connectionId is required' },
+            });
+        }
+
+        const { headers, row } = req.body;
+        if (!headers || !row) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'headers and row are required' },
+            });
+        }
+
+        // Validate for null/empty values
+        const validation = validateRowData(row);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: `Cannot save row with empty values. Please fill in: ${validation.emptyFields.join(', ')}`,
+                    emptyFields: validation.emptyFields,
+                },
+            });
+        }
+
+        const rowIndex = parseInt(req.params.rowIndex, 10);
+        if (isNaN(rowIndex) || rowIndex < 2) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid row index (must be >= 2)' },
+            });
+        }
+
+        await googleSheets.updateSheetRow(
+            connectionId as string,
+            req.params.spreadsheetId,
+            decodeURIComponent(req.params.sheetName),
+            rowIndex,
+            headers,
+            row
+        );
+
+        res.json({
+            success: true,
+            data: { message: 'Row updated successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to update sheet row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to update row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
+/**
+ * DELETE /api/google/spreadsheets/:spreadsheetId/sheets/:sheetName/rows/:rowIndex
+ * Delete row from sheet (rowIndex is 1-indexed, 2 = first data row)
+ */
+router.delete('/spreadsheets/:spreadsheetId/sheets/:sheetName/rows/:rowIndex', async (req: Request, res: Response) => {
+    try {
+        const { connectionId } = req.query;
+
+        if (!connectionId) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'connectionId is required' },
+            });
+        }
+
+        const rowIndex = parseInt(req.params.rowIndex, 10);
+        if (isNaN(rowIndex) || rowIndex < 2) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid row index (must be >= 2)' },
+            });
+        }
+
+        await googleSheets.deleteSheetRows(
+            connectionId as string,
+            req.params.spreadsheetId,
+            decodeURIComponent(req.params.sheetName),
+            [rowIndex - 1] // Convert to 0-indexed for the service
+        );
+
+        res.json({
+            success: true,
+            data: { message: 'Row deleted successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to delete sheet row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to delete row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
 export default router;

@@ -2,9 +2,10 @@
 // Integration Detail Page
 // ===========================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { DataTableView } from '../components/DataTableView';
 import {
     ArrowLeft,
     Play,
@@ -31,6 +32,8 @@ interface Integration {
     sync_direction: string;
     status: string;
     last_sync_at: string | null;
+    google_connection_id: string;
+    mysql_connection_id: string;
 }
 
 interface ColumnMapping {
@@ -64,6 +67,13 @@ export function IntegrationDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Table data state
+    const [sheetData, setSheetData] = useState<{ headers: string[]; rows: Record<string, unknown>[] }>({ headers: [], rows: [] });
+    const [mysqlData, setMysqlData] = useState<{ columns: string[]; rows: Record<string, unknown>[] }>({ columns: [], rows: [] });
+    const [loadingSheetData, setLoadingSheetData] = useState(false);
+    const [loadingMysqlData, setLoadingMysqlData] = useState(false);
+    const [showDeleteIntegrationConfirm, setShowDeleteIntegrationConfirm] = useState(false);
+
     useEffect(() => {
         loadIntegration();
         loadLogs();
@@ -91,6 +101,55 @@ export function IntegrationDetailPage() {
         }
     };
 
+    // Load Google Sheets data
+    const loadSheetData = useCallback(async () => {
+        if (!integration) return;
+        setLoadingSheetData(true);
+        try {
+            const data = await api.google.getSheetData(
+                integration.google_connection_id,
+                integration.spreadsheet_id,
+                integration.sheet_name
+            );
+            setSheetData(data);
+        } catch (err) {
+            console.error('Failed to load sheet data:', err);
+        } finally {
+            setLoadingSheetData(false);
+        }
+    }, [integration]);
+
+    // Load MySQL data
+    const loadMysqlData = useCallback(async () => {
+        if (!integration) return;
+        setLoadingMysqlData(true);
+        try {
+            const data = await api.mysql.getTableData(
+                integration.mysql_connection_id,
+                integration.table_name
+            );
+            setMysqlData(data);
+        } catch (err) {
+            console.error('Failed to load MySQL data:', err);
+        } finally {
+            setLoadingMysqlData(false);
+        }
+    }, [integration]);
+
+    // Load table data when integration is loaded
+    useEffect(() => {
+        if (integration) {
+            loadSheetData();
+            loadMysqlData();
+        }
+    }, [integration, loadSheetData, loadMysqlData]);
+
+    // Get primary key column from mappings
+    const getPrimaryKeyColumn = useCallback(() => {
+        const pkMapping = mappings.find(m => m.is_primary_key);
+        return pkMapping?.mysql_column || null;
+    }, [mappings]);
+
     const handlePause = async () => {
         try {
             await api.integrations.pause(id!);
@@ -113,19 +172,64 @@ export function IntegrationDetailPage() {
         try {
             await api.integrations.sync(id!);
             await loadLogs();
+            // Start polling for sync completion
+            pollForSyncCompletion();
         } catch (err) {
             setError('Failed to trigger sync');
         }
     };
 
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this integration?')) return;
+    // Handle sync triggered from data table edits
+    const handleSyncAndRefresh = async () => {
+        try {
+            await api.integrations.sync(id!);
+            // Start polling for sync completion and data refresh
+            pollForSyncCompletion();
+        } catch (err) {
+            console.error('Auto-sync failed:', err);
+        }
+    };
 
+    // Poll for sync completion and auto-refresh data
+    const pollForSyncCompletion = () => {
+        let pollCount = 0;
+        const maxPolls = 30; // Poll for up to 30 seconds
+
+        const pollInterval = setInterval(async () => {
+            pollCount++;
+            try {
+                const newLogs = await api.integrations.getLogs(id!);
+                setLogs(newLogs);
+
+                // Check if the latest sync is completed
+                if (newLogs.length > 0) {
+                    const latestLog = newLogs[0];
+                    if (latestLog.status === 'completed' || latestLog.status === 'failed') {
+                        clearInterval(pollInterval);
+                        // Refresh both table data after sync completes
+                        loadSheetData();
+                        loadMysqlData();
+                        loadIntegration(); // Refresh last_sync_at
+                    }
+                }
+
+                if (pollCount >= maxPolls) {
+                    clearInterval(pollInterval);
+                }
+            } catch (err) {
+                clearInterval(pollInterval);
+            }
+        }, 1000);
+    };
+
+    const handleDelete = async () => {
         try {
             await api.integrations.delete(id!);
             navigate('/dashboard');
         } catch (err) {
             setError('Failed to delete integration');
+        } finally {
+            setShowDeleteIntegrationConfirm(false);
         }
     };
 
@@ -216,7 +320,7 @@ export function IntegrationDetailPage() {
                             Resume
                         </button>
                     ) : null}
-                    <button className="btn btn-danger" onClick={handleDelete}>
+                    <button className="btn btn-danger" onClick={() => setShowDeleteIntegrationConfirm(true)}>
                         <Trash2 size={18} />
                         Delete
                     </button>
@@ -295,6 +399,99 @@ export function IntegrationDetailPage() {
                 </div>
             </div>
 
+            {/* Data Tables Section */}
+            <div className="detail-section data-tables-section">
+                <h2>Table Data</h2>
+                <p className="data-tables-info">View and edit data in both tables. Changes are automatically synced after each edit.</p>
+
+                <div className="data-tables-grid">
+                    {/* Google Sheets Data */}
+                    <DataTableView
+                        title={`Sheet: ${integration.sheet_name}`}
+                        icon={<Sheet size={20} />}
+                        headers={sheetData.headers}
+                        rows={sheetData.rows}
+                        loading={loadingSheetData}
+                        onRefresh={loadSheetData}
+                        onAddRow={async (row) => {
+                            await api.google.insertRow(
+                                integration.google_connection_id,
+                                integration.spreadsheet_id,
+                                integration.sheet_name,
+                                sheetData.headers,
+                                row
+                            );
+                        }}
+                        onUpdateRow={async (rowIndex, row) => {
+                            // rowIndex is 0-based in our data, but sheets API uses 1-based (2 = first data row)
+                            await api.google.updateRow(
+                                integration.google_connection_id,
+                                integration.spreadsheet_id,
+                                integration.sheet_name,
+                                rowIndex + 2, // Add 2: +1 for header row, +1 for 0-indexing
+                                sheetData.headers,
+                                row
+                            );
+                        }}
+                        onDeleteRow={async (rowIndex) => {
+                            await api.google.deleteRow(
+                                integration.google_connection_id,
+                                integration.spreadsheet_id,
+                                integration.sheet_name,
+                                rowIndex + 2 // Add 2: +1 for header row, +1 for 0-indexing
+                            );
+                        }}
+                        onSync={handleSyncAndRefresh}
+                    />
+
+                    {/* MySQL Data */}
+                    <DataTableView
+                        title={`Table: ${integration.table_name}`}
+                        icon={<Database size={20} />}
+                        headers={mysqlData.columns}
+                        rows={mysqlData.rows}
+                        primaryKeyColumn={getPrimaryKeyColumn() || undefined}
+                        loading={loadingMysqlData}
+                        onRefresh={loadMysqlData}
+                        onAddRow={async (row) => {
+                            await api.mysql.insertRow(
+                                integration.mysql_connection_id,
+                                integration.table_name,
+                                row
+                            );
+                        }}
+                        onUpdateRow={async (rowIndex, row) => {
+                            const pkColumn = getPrimaryKeyColumn();
+                            if (!pkColumn) {
+                                throw new Error('No primary key defined for this table');
+                            }
+                            const pkValue = String(mysqlData.rows[rowIndex][pkColumn]);
+                            await api.mysql.updateRow(
+                                integration.mysql_connection_id,
+                                integration.table_name,
+                                pkColumn,
+                                pkValue,
+                                row
+                            );
+                        }}
+                        onDeleteRow={async (_rowIndex, row) => {
+                            const pkColumn = getPrimaryKeyColumn();
+                            if (!pkColumn) {
+                                throw new Error('No primary key defined for this table');
+                            }
+                            const pkValue = String(row[pkColumn]);
+                            await api.mysql.deleteRow(
+                                integration.mysql_connection_id,
+                                integration.table_name,
+                                pkColumn,
+                                pkValue
+                            );
+                        }}
+                        onSync={handleSyncAndRefresh}
+                    />
+                </div>
+            </div>
+
             {/* Sync Logs */}
             <div className="detail-section">
                 <h2>Sync History</h2>
@@ -347,6 +544,24 @@ export function IntegrationDetailPage() {
                     </div>
                 )}
             </div>
+
+            {/* Delete Integration Confirmation Modal */}
+            {showDeleteIntegrationConfirm && (
+                <div className="delete-confirm-overlay">
+                    <div className="delete-confirm-modal">
+                        <h4>Confirm Delete Integration</h4>
+                        <p>Are you sure you want to delete this integration? This action cannot be undone.</p>
+                        <div className="delete-confirm-actions">
+                            <button className="btn btn-secondary" onClick={() => setShowDeleteIntegrationConfirm(false)}>
+                                Cancel
+                            </button>
+                            <button className="btn btn-danger" onClick={handleDelete}>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

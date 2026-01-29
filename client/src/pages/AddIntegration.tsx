@@ -276,7 +276,14 @@ export function AddIntegrationPage() {
                     setError('Please select a primary key column');
                     return;
                 }
-                setIntegrationName(`${selectedSheet} → ${createNewTable ? newTableName : selectedTable}`);
+                const targetTable = createNewTable ? newTableName : selectedTable;
+                if (syncDirection === 'mysql_to_sheets') {
+                    setIntegrationName(`${targetTable} → ${selectedSheet}`);
+                } else if (syncDirection === 'bidirectional') {
+                    setIntegrationName(`${selectedSheet} ↔ ${targetTable}`);
+                } else {
+                    setIntegrationName(`${selectedSheet} → ${targetTable}`);
+                }
                 setStep('review');
                 break;
 

@@ -207,14 +207,21 @@ router.get('/connections/:id/tables/:tableName/data', async (req: Request, res: 
         // Verify ownership
         await mysqlService.getMySQLConnection(req.tenant!.id, req.params.id);
 
-        const data = await mysqlService.getTableData(
+        // Get schema to know column names
+        const schema = await mysqlService.getTableSchema(
+            req.params.id,
+            req.params.tableName
+        );
+        const columns = schema.map(col => col.column);
+
+        const rows = await mysqlService.getTableData(
             req.params.id,
             req.params.tableName
         );
 
         res.json({
             success: true,
-            data,
+            data: { columns, rows },
         });
     } catch (error) {
         logger.error('Failed to get table data:', error);
