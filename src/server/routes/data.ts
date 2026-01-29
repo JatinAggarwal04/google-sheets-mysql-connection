@@ -218,8 +218,20 @@ dataRouter.post('/sheets', async (req: Request, res: Response) => {
     try {
         const data = req.body as Record<string, unknown>;
 
+        // Auto-populate default values if not provided
+        const now = new Date();
+        const formattedDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+        const enrichedData: Record<string, unknown> = {
+            ...data,
+            // Set status to 'active' if not provided
+            status: data['status'] || 'active',
+            // Set created_at to current date if not provided
+            created_at: data['created_at'] || formattedDate,
+        };
+
         const sheetsClient = getSheetsClient();
-        const rowNumber = await sheetsClient.appendRowAuto(data);
+        const rowNumber = await sheetsClient.appendRowAuto(enrichedData);
 
         logger.info('Sheet row added', { rowNumber });
 
