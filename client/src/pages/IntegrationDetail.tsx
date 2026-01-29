@@ -19,6 +19,7 @@ import {
     Sheet,
     Database,
     ArrowRight,
+    ArrowLeftRight,
     Zap,
 } from 'lucide-react';
 import './IntegrationDetail.css';
@@ -331,29 +332,63 @@ export function IntegrationDetailPage() {
             <div className="detail-section">
                 <h2>Overview</h2>
                 <div className="overview-grid">
-                    <div className="overview-card">
-                        <div className="overview-icon">
-                            <Sheet size={24} />
-                        </div>
-                        <div className="overview-content">
-                            <span className="overview-label">Source Sheet</span>
-                            <span className="overview-value">{integration.sheet_name}</span>
-                        </div>
-                    </div>
+                    {integration.sync_direction === 'mysql_to_sheets' ? (
+                        <>
+                            <div className="overview-card">
+                                <div className="overview-icon mysql">
+                                    <Database size={24} />
+                                </div>
+                                <div className="overview-content">
+                                    <span className="overview-label">Source Table</span>
+                                    <span className="overview-value">{integration.table_name}</span>
+                                </div>
+                            </div>
 
-                    <div className="overview-arrow">
-                        <ArrowRight size={24} />
-                    </div>
+                            <div className="overview-arrow">
+                                <ArrowRight size={24} />
+                            </div>
 
-                    <div className="overview-card">
-                        <div className="overview-icon mysql">
-                            <Database size={24} />
-                        </div>
-                        <div className="overview-content">
-                            <span className="overview-label">Target Table</span>
-                            <span className="overview-value">{integration.table_name}</span>
-                        </div>
-                    </div>
+                            <div className="overview-card">
+                                <div className="overview-icon">
+                                    <Sheet size={24} />
+                                </div>
+                                <div className="overview-content">
+                                    <span className="overview-label">Target Sheet</span>
+                                    <span className="overview-value">{integration.sheet_name}</span>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="overview-card">
+                                <div className="overview-icon">
+                                    <Sheet size={24} />
+                                </div>
+                                <div className="overview-content">
+                                    <span className="overview-label">{integration.sync_direction === 'bidirectional' ? 'Sheet' : 'Source Sheet'}</span>
+                                    <span className="overview-value">{integration.sheet_name}</span>
+                                </div>
+                            </div>
+
+                            <div className="overview-arrow">
+                                {integration.sync_direction === 'bidirectional' ? (
+                                    <ArrowLeftRight size={24} />
+                                ) : (
+                                    <ArrowRight size={24} />
+                                )}
+                            </div>
+
+                            <div className="overview-card">
+                                <div className="overview-icon mysql">
+                                    <Database size={24} />
+                                </div>
+                                <div className="overview-content">
+                                    <span className="overview-label">{integration.sync_direction === 'bidirectional' ? 'Table' : 'Target Table'}</span>
+                                    <span className="overview-value">{integration.table_name}</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="overview-meta">
