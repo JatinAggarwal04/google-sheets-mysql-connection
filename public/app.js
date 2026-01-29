@@ -44,6 +44,18 @@ class SyncDashboard {
       editFields: document.getElementById('editFields'),
       closeModalBtn: document.getElementById('closeModalBtn'),
       cancelEditBtn: document.getElementById('cancelEditBtn'),
+      // Prompt Modal
+      promptModal: document.getElementById('promptModal'),
+      promptForm: document.getElementById('promptForm'),
+      promptInput: document.getElementById('promptInput'),
+      closePromptBtn: document.getElementById('closePromptBtn'),
+      cancelPromptBtn: document.getElementById('cancelPromptBtn'),
+      // Confirm Modal
+      confirmModal: document.getElementById('confirmModal'),
+      confirmMessage: document.getElementById('confirmMessage'),
+      doConfirmBtn: document.getElementById('doConfirmBtn'),
+      closeConfirmBtn: document.getElementById('closeConfirmBtn'),
+      cancelConfirmBtn: document.getElementById('cancelConfirmBtn'),
     };
 
     this.init();
@@ -299,9 +311,13 @@ class SyncDashboard {
     let rowData = {};
     let headers = [];
     
+    // Fields to exclude from the "Add New" form (auto-filled by backend)
+    const autoFields = ['status', 'created_at', 'id', '_rowNumber', '_created_at', '_updated_at', '_sync_timestamp', '_sync_source'];
+
+    
     if (source === 'sheets') {
       if (isNew) {
-        headers = this.sheetsData?.headers.filter(h => h !== '_rowNumber') || [];
+        headers = this.sheetsData?.headers.filter(h => !autoFields.includes(h)) || [];
       } else {
         const row = this.sheetsData?.rows.find(r => r._rowNumber == id);
         if (row) {
@@ -312,7 +328,7 @@ class SyncDashboard {
       }
     } else {
       if (isNew) {
-        headers = this.mysqlData?.headers.filter(h => !h.startsWith('_') && h !== 'id') || [];
+        headers = this.mysqlData?.headers.filter(h => !h.startsWith('_') && !autoFields.includes(h)) || [];
       } else {
         const row = this.mysqlData?.rows.find(r => r.id == id);
         if (row) {
@@ -397,33 +413,33 @@ class SyncDashboard {
   }
 
   async deleteRow(source, id) {
-    if (!confirm(`Are you sure you want to delete this row? This action cannot be undone.`)) {
-      return;
-    }
-    
-    try {
-      const response = await fetch(`/api/data/${source}/${id}`, {
-        method: 'DELETE',
-      });
+    this.showConfirmModal('Are you sure you want to delete this row? This action cannot be undone.', async (confirmed) => {
+      if (!confirmed) return;
       
-      const result = await response.json();
-      
-      if (response.ok) {
-        this.showToast('success', result.message || 'Deleted successfully');
+      try {
+        const response = await fetch(`/api/data/${source}/${id}`, {
+          method: 'DELETE',
+        });
         
-        // Refresh data
-        if (source === 'sheets') {
-          this.fetchSheetsData();
+        const result = await response.json();
+        
+        if (response.ok) {
+          this.showToast('success', result.message || 'Deleted successfully');
+          
+          // Refresh data
+          if (source === 'sheets') {
+            this.fetchSheetsData();
+          } else {
+            this.fetchMysqlData();
+          }
         } else {
-          this.fetchMysqlData();
+          this.showToast('error', result.error?.message || 'Failed to delete');
         }
-      } else {
-        this.showToast('error', result.error?.message || 'Failed to delete');
+      } catch (error) {
+        console.error('Delete error:', error);
+        this.showToast('error', 'Failed to delete. Check console for details.');
       }
-    } catch (error) {
-      console.error('Delete error:', error);
-      this.showToast('error', 'Failed to delete. Check console for details.');
-    }
+    });
   }
 
   // ========== TOAST NOTIFICATIONS ==========
@@ -617,7 +633,56 @@ class SyncDashboard {
         this.closeModal();
       }
     });
+
+    // Prompt Modal Events
+    this.elements.closePromptBtn.addEventListener('click', () => this.closePromptModal());
+    this.elements.cancelPromptBtn.addEventListener('click', () => this.closePromptModal());
+    this.elements.promptForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (this.promptCallback) {
+        this.promptCallback(this.elements.promptInput.value);
+      }
+      this.closePromptModal();
+    });
+
+    // Confirm Modal Events
+    this.elements.closeConfirmBtn.addEventListener('click', () => this.closeConfirmModal());
+    this.elements.cancelConfirmBtn.addEventListener('click', () => this.closeConfirmModal());
+    this.elements.doConfirmBtn.addEventListener('click', () => {
+      if (this.confirmCallback) {
+        this.confirmCallback(true);
+      }
+      this.closeConfirmModal();
+    });
   }
+
+  // ========== CUSTOM MODALS ==========
+
+  showPromptModal(title, label, callback) {
+    document.getElementById('promptTitle').textContent = title;
+    document.getElementById('promptLabel').textContent = label;
+    this.elements.promptInput.value = '';
+    this.promptCallback = callback;
+    this.elements.promptModal.classList.add('active');
+    setTimeout(() => this.elements.promptInput.focus(), 100);
+  }
+
+  closePromptModal() {
+    this.elements.promptModal.classList.remove('active');
+    this.promptCallback = null;
+  }
+
+  showConfirmModal(message, callback) {
+    this.elements.confirmMessage.textContent = message;
+    this.confirmCallback = callback;
+    this.elements.confirmModal.classList.add('active');
+  }
+
+  closeConfirmModal() {
+    this.elements.confirmModal.classList.remove('active');
+    this.confirmCallback = null;
+  }
+
 
   async fetchInitialStatus() {
     try {
@@ -672,33 +737,35 @@ class SyncDashboard {
   }
 
   async triggerSync() {
-    const apiKey = prompt('Enter API key to trigger sync:');
-    if (!apiKey) return;
-
-    try {
-      this.elements.triggerSyncBtn.disabled = true;
-      
-      const response = await fetch('/api/sync/trigger', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        this.addLogEntry('sync', 'Full sync triggered');
-      } else {
-        this.addLogEntry('error', data.error?.message || 'Failed to trigger sync');
+    this.showPromptModal('Trigger Sync', 'Enter API Key to trigger sync:', async (apiKey) => {
+      if (!apiKey) return;
+  
+      try {
+        this.elements.triggerSyncBtn.disabled = true;
+        
+        const response = await fetch('/api/sync/trigger', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          this.addLogEntry('sync', 'Full sync triggered');
+          this.fetchInitialStatus();
+        } else {
+          this.addLogEntry('error', data.error?.message || 'Failed to trigger sync');
+        }
+      } catch (error) {
+        console.error('Failed to trigger sync:', error);
+        this.addLogEntry('error', 'Failed to trigger sync');
+      } finally {
         this.elements.triggerSyncBtn.disabled = false;
       }
-    } catch (error) {
-      console.error('Failed to trigger sync:', error);
-      this.addLogEntry('error', 'Failed to trigger sync');
-      this.elements.triggerSyncBtn.disabled = false;
-    }
+    });
   }
 
   addLogEntry(type, message) {

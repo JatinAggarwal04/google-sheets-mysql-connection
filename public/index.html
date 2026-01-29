@@ -235,6 +235,43 @@
       </div>
     </div>
 
+    <!-- Prompt Modal (For API Key) -->
+    <div class="modal" id="promptModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="promptTitle">Input Required</h3>
+          <button class="modal-close" id="closePromptBtn">&times;</button>
+        </div>
+        <form class="modal-body" id="promptForm">
+          <div class="form-group">
+            <label id="promptLabel" for="promptInput">Please enter value:</label>
+            <input type="password" id="promptInput" class="form-control" placeholder="Enter API Key...">
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" id="cancelPromptBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal" id="confirmModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Confirmation</h3>
+          <button class="modal-close" id="closeConfirmBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmMessage" style="margin-bottom: 20px;">Are you sure?</p>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" id="cancelConfirmBtn">Cancel</button>
+            <button type="button" class="btn btn-danger" id="doConfirmBtn">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
       <p>Google Sheets ↔ MySQL 2-Way Sync Platform</p>
