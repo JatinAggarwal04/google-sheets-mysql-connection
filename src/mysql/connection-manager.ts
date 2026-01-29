@@ -1,14 +1,15 @@
 import { getMySQLClient, MySQLClient } from './client.js';
-import { createSchemaManager, SchemaManager } from './schema-manager.js';
+import { createSchemaManager, SchemaManager, ColumnDefinition } from './schema-manager.js';
 import { createComponentLogger } from '../utils/logger.js';
 import { DatabaseError } from '../utils/errors.js';
-import { RowDataPacket, ResultSetHeader } from 'mysql2/promise'; // explicit Import
+import { RowDataPacket } from 'mysql2/promise';
 import { getSupabaseClient } from '../utils/supabase.js';
+import { getConfig } from '../config/index.js';
 
 const logger = createComponentLogger('ConnectionManager');
 
 export interface ConnectionConfig {
-    id?: string; // UUID
+    id?: string;
     userId: string;
     name: string;
     spreadsheetId: string;
@@ -27,26 +28,26 @@ export class ConnectionManager {
 
     constructor() {
         this.client = getMySQLClient();
-        this.schemaManager = createSchemaManager();
+        const config = getConfig();
+        this.schemaManager = createSchemaManager(config.mysql.database);
     }
 
     /**
      * Initialize manager (required by Coordinator)
      */
     async initialize(): Promise<void> {
-        // No-op for Supabase mode (tables created via migration)
         return Promise.resolve();
     }
 
     /**
      * Get all active connections for all users (System usage)
-     * Service Key allows bypassing RLS to fetch all.
      */
     async getActiveConnections(): Promise<ConnectionConfig[]> {
         const supabase = getSupabaseClient();
 
-        const { data, error } = await supabase
-            .from('user_integrations')
+        // Cast to any to bypass strict type checking without generated types
+        const { data, error } = await (supabase
+            .from('user_integrations') as any)
             .select('*')
             .eq('status', 'active');
 
@@ -55,14 +56,11 @@ export class ConnectionManager {
             throw new DatabaseError('Failed to fetch active connections');
         }
 
-        return data.map(this.mapSupabaseToConfig);
+        return (data as any[]).map(this.mapSupabaseToConfig);
     }
 
     /**
      * Create a new connection
-     * 1. Store secrets in MySQL (user_secrets)
-     * 2. Store metadata in Supabase (user_integrations)
-     * 3. Create destination table in MySQL
      */
     async createConnection(userId: string, config: Omit<ConnectionConfig, 'id' | 'userId'>): Promise<string> {
         const connection = await this.client.getConnection();
@@ -71,25 +69,13 @@ export class ConnectionManager {
         try {
             await connection.beginTransaction();
 
-            // 1. Store/Reference Secrets (Simplified for now: assuming secrets are managed/linked via IDs or created here)
-            // For this implementation, we assume secrets are already handled or we insert dummy/placeholder if strictly required by logic.
-            // The prompt says "continuing to use MySQL for storing encrypted secrets".
-            // Since the frontend doesn't send secrets (auth is handled via simple user mapping in this demo or existing secrets),
-            // We'll create placeholder entries or reuse existing logic if adaptable.
-            // Original logic assumed we insert into user_secrets?
-            // "INSERT INTO user_secrets ... "
-            // The current createConnectionSchema in router DOES NOT accept credentials. 
-            // So we assume the system uses a shared service account or linked account.
-            // We will insert '0' or NULL for secret IDs if not provided, or handle them if logic requires.
+            // Create destination table
+            const columnDefs = this.mapToColumnDefs(config.columnMapping);
+            await this.schemaManager.ensureTable(config.mysqlTableName, columnDefs);
 
-            // Note: In a real app, we'd handle secret storage here. For now, we proceed to metadata.
-
-            // 2. Create destination table
-            await this.schemaManager.ensureTable(config.mysqlTableName, config.columnMapping);
-
-            // 3. Insert into Supabase
-            const { data, error } = await supabase
-                .from('user_integrations')
+            // Insert into Supabase
+            const { data, error } = await (supabase
+                .from('user_integrations') as any)
                 .insert({
                     user_id: userId,
                     connection_name: config.name,
@@ -98,8 +84,6 @@ export class ConnectionManager {
                     mysql_table_name: config.mysqlTableName,
                     column_mapping: config.columnMapping,
                     status: config.status || 'active',
-                    // Secrets would be linked here
-                    // google_secret_id: ...
                 })
                 .select()
                 .single();
@@ -109,8 +93,9 @@ export class ConnectionManager {
             }
 
             await connection.commit();
-            logger.info('Connection created', { id: data.id, userId });
-            return data.id;
+            const newId = (data as any).id;
+            logger.info('Connection created', { id: newId, userId });
+            return newId;
 
         } catch (error) {
             await connection.rollback();
@@ -127,8 +112,8 @@ export class ConnectionManager {
     async getAllConnections(userId: string): Promise<ConnectionConfig[]> {
         const supabase = getSupabaseClient();
 
-        const { data, error } = await supabase
-            .from('user_integrations')
+        const { data, error } = await (supabase
+            .from('user_integrations') as any)
             .select('*')
             .eq('user_id', userId);
 
@@ -137,7 +122,7 @@ export class ConnectionManager {
             throw new DatabaseError('Failed to fetch connections');
         }
 
-        return data.map(this.mapSupabaseToConfig);
+        return (data as any[]).map(this.mapSupabaseToConfig);
     }
 
     /**
@@ -146,8 +131,8 @@ export class ConnectionManager {
     async getConnection(userId: string, connectionId: string): Promise<ConnectionConfig | null> {
         const supabase = getSupabaseClient();
 
-        const { data, error } = await supabase
-            .from('user_integrations')
+        const { data, error } = await (supabase
+            .from('user_integrations') as any)
             .select('*')
             .eq('id', connectionId)
             .eq('user_id', userId)
@@ -168,12 +153,11 @@ export class ConnectionManager {
     async deleteConnection(userId: string, connectionId: string): Promise<void> {
         const supabase = getSupabaseClient();
 
-        // Get details first to clean up MySQL table
         const conn = await this.getConnection(userId, connectionId);
         if (!conn) return;
 
-        const { error } = await supabase
-            .from('user_integrations')
+        const { error } = await (supabase
+            .from('user_integrations') as any)
             .delete()
             .eq('id', connectionId)
             .eq('user_id', userId);
@@ -183,7 +167,6 @@ export class ConnectionManager {
             throw new DatabaseError('Failed to delete connection');
         }
 
-        // Drop MySQL table (optional, but good for cleanup)
         try {
             await this.schemaManager.dropTable(conn.mysqlTableName);
         } catch (e) {
@@ -197,8 +180,8 @@ export class ConnectionManager {
     async updateStatus(connectionId: string, status: 'active' | 'paused' | 'error'): Promise<void> {
         const supabase = getSupabaseClient();
 
-        const { error } = await supabase
-            .from('user_integrations')
+        const { error } = await (supabase
+            .from('user_integrations') as any)
             .update({ status })
             .eq('id', connectionId);
 
@@ -219,7 +202,7 @@ export class ConnectionManager {
             spreadsheetId: row.spreadsheet_id,
             sheetName: row.sheet_name,
             mysqlTableName: row.mysql_table_name,
-            columnMapping: row.column_mapping,
+            columnMapping: row.column_mapping || {},
             status: row.status,
             googleSecretId: row.google_secret_id,
             mysqlSecretId: row.mysql_secret_id,
@@ -228,15 +211,25 @@ export class ConnectionManager {
     }
 
     /**
+     * Map record to ColumnDefinition[]
+     */
+    private mapToColumnDefs(mapping: Record<string, string>): ColumnDefinition[] {
+        return Object.entries(mapping).map(([name, type]) => ({
+            name,
+            type: type as any, // Expect valid type from input
+            nullable: true
+        }));
+    }
+
+    /**
      * Get secrets (Legacy/MySQL support)
-     * Secrets are still stored in MySQL user_secrets table
      */
     async getSecrets(secretId: number): Promise<any> {
         try {
-            const [rows] = await this.client.execute<RowDataPacket[]>(
+            const [rows] = (await this.client.execute(
                 'SELECT * FROM user_secrets WHERE id = ?',
                 [secretId]
-            );
+            )) as any; // Cast to bypass strict tuple type check
             return rows[0] || null;
         } catch (error) {
             logger.error('Failed to fetch secrets', { error });

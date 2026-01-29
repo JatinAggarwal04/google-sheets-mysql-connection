@@ -68,12 +68,11 @@ export class CDCListener extends EventEmitter {
             this.isRunning = true;
             this.reconnectAttempts = 0;
 
-            // Add trigger for the sync table
-            await this.addTableTrigger(config.mysql.database, config.sync.tableName);
+            // Add trigger for the sync table - REMOVED (Coordinator handles this per connection)
+            // await this.addTableTrigger(config.mysql.database, config.sync.tableName);
 
             logger.info('CDC listener started', {
                 database: config.mysql.database,
-                table: config.sync.tableName,
             });
         } catch (error) {
             throw new DatabaseError('Failed to start CDC listener', {

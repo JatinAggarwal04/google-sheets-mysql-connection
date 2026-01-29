@@ -143,6 +143,19 @@ export class MultiSyncCoordinator {
             // Update status to error?
             await this.connectionManager.updateStatus(conn.id!, 'error');
         }
+
+        // Add CDC trigger for this connection's table
+        const cdc = getCDCListener();
+        const appConfig = getConfig();
+        try {
+            // Only add if CDC is running (it might be in polling mode if CDC failed start, but here we assume it started)
+            // Best effort
+            if (cdc.getIsRunning()) {
+                await cdc.addTableTrigger(appConfig.mysql.database, conn.mysqlTableName);
+            }
+        } catch (e) {
+            logger.warn(`Failed to add CDC trigger for ${conn.mysqlTableName}`, { error: e });
+        }
     }
 
     /**
