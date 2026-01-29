@@ -4,6 +4,7 @@ import { createComponentLogger } from '../../utils/logger.js';
 import { getMySQLClient } from '../../mysql/client.js';
 import { getSheetsClient } from '../../sheets/client.js';
 import { RowDataPacket } from 'mysql2/promise';
+import { getSyncEngine } from '../../sync/sync-engine.js';
 
 const logger = createComponentLogger('DataRoute');
 
@@ -109,7 +110,16 @@ dataRouter.put('/sheets/:row', async (req: Request, res: Response) => {
         const sheetsClient = getSheetsClient();
         await sheetsClient.updateRowAuto(rowNumber, data);
 
-        logger.info('Sheet row updated', { rowNumber });
+        logger.info('Sheet row updated via API', { rowNumber });
+
+        // Notify Sync Engine
+        getSyncEngine().handleSheetChange({
+            row: rowNumber,
+            column: 0,
+            operationType: 'UPDATE',
+            rowData: data,
+            editedBy: 'DASHBOARD_API'
+        });
 
         res.json({
             success: true,
@@ -233,7 +243,16 @@ dataRouter.post('/sheets', async (req: Request, res: Response) => {
         const sheetsClient = getSheetsClient();
         const rowNumber = await sheetsClient.appendRowAuto(enrichedData);
 
-        logger.info('Sheet row added', { rowNumber });
+        logger.info('Sheet row added via API', { rowNumber });
+
+        // Notify Sync Engine to replicate to MySQL
+        getSyncEngine().handleSheetChange({
+            row: rowNumber,
+            column: 0,
+            operationType: 'INSERT',
+            rowData: enrichedData,
+            editedBy: 'DASHBOARD_API'
+        });
 
         res.status(201).json({
             success: true,
@@ -339,7 +358,15 @@ dataRouter.delete('/sheets/:row', async (req: Request, res: Response) => {
         const sheetsClient = getSheetsClient();
         await sheetsClient.deleteRow(rowNumber);
 
-        logger.info('Sheet row deleted', { rowNumber });
+        logger.info('Sheet row deleted via API', { rowNumber });
+
+        // Notify Sync Engine
+        getSyncEngine().handleSheetChange({
+            row: rowNumber,
+            column: 0,
+            operationType: 'DELETE',
+            editedBy: 'DASHBOARD_API'
+        });
 
         res.json({
             success: true,
