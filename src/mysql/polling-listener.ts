@@ -21,11 +21,11 @@ export class MySQLPollingListener extends EventEmitter {
     private tableName: string;
     private intervalMs = 2000; // Poll every 2 seconds
 
-    constructor() {
+    constructor(tableName?: string) {
         super();
         this.client = getMySQLClient();
         const config = getConfig();
-        this.tableName = config.sync.tableName;
+        this.tableName = tableName ?? config.sync.tableName;
         this.lastCheckTime = new Date();
     }
 
@@ -122,7 +122,7 @@ export class MySQLPollingListener extends EventEmitter {
 
         delete cleanData._sync_source;
         delete cleanData._sync_timestamp;
-        delete cleanData._row_number;
+        // delete cleanData._row_number; // Keep this! Critical for syncing back to Sheet
         delete cleanData._created_at;
         delete cleanData._updated_at;
 
@@ -141,7 +141,10 @@ export class MySQLPollingListener extends EventEmitter {
 // Singleton instance
 let pollingListenerInstance: MySQLPollingListener | null = null;
 
-export function getPollingListener(): MySQLPollingListener {
+export function getPollingListener(tableName?: string): MySQLPollingListener {
+    if (tableName) {
+        return new MySQLPollingListener(tableName);
+    }
     if (!pollingListenerInstance) {
         pollingListenerInstance = new MySQLPollingListener();
     }

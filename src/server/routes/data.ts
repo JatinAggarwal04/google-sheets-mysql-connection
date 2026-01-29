@@ -4,7 +4,7 @@ import { createComponentLogger } from '../../utils/logger.js';
 import { getMySQLClient } from '../../mysql/client.js';
 import { getSheetsClient } from '../../sheets/client.js';
 import { RowDataPacket } from 'mysql2/promise';
-import { getSyncEngine } from '../../sync/sync-engine.js';
+import { getCoordinator } from '../../sync/coordinator.js';
 
 const logger = createComponentLogger('DataRoute');
 
@@ -113,13 +113,18 @@ dataRouter.put('/sheets/:row', async (req: Request, res: Response) => {
         logger.info('Sheet row updated via API', { rowNumber });
 
         // Notify Sync Engine
-        getSyncEngine().handleSheetChange({
-            row: rowNumber,
-            column: 0,
-            operationType: 'UPDATE',
-            rowData: data,
-            editedBy: 'DASHBOARD_API'
-        });
+        const engine = getCoordinator().getDefaultEngine();
+        if (engine) {
+            engine.handleSheetChange({
+                row: rowNumber,
+                column: 0,
+                operationType: 'UPDATE',
+                rowData: data,
+                editedBy: 'DASHBOARD_API'
+            });
+        } else {
+            logger.warn('No sync engine active to notify of sheet update');
+        }
 
         res.json({
             success: true,
@@ -246,13 +251,18 @@ dataRouter.post('/sheets', async (req: Request, res: Response) => {
         logger.info('Sheet row added via API', { rowNumber });
 
         // Notify Sync Engine to replicate to MySQL
-        getSyncEngine().handleSheetChange({
-            row: rowNumber,
-            column: 0,
-            operationType: 'INSERT',
-            rowData: enrichedData,
-            editedBy: 'DASHBOARD_API'
-        });
+        const engine = getCoordinator().getDefaultEngine();
+        if (engine) {
+            engine.handleSheetChange({
+                row: rowNumber,
+                column: 0,
+                operationType: 'INSERT',
+                rowData: enrichedData,
+                editedBy: 'DASHBOARD_API'
+            });
+        } else {
+            logger.warn('No sync engine active to notify of sheet insert');
+        }
 
         res.status(201).json({
             success: true,
@@ -361,12 +371,17 @@ dataRouter.delete('/sheets/:row', async (req: Request, res: Response) => {
         logger.info('Sheet row deleted via API', { rowNumber });
 
         // Notify Sync Engine
-        getSyncEngine().handleSheetChange({
-            row: rowNumber,
-            column: 0,
-            operationType: 'DELETE',
-            editedBy: 'DASHBOARD_API'
-        });
+        const engine = getCoordinator().getDefaultEngine();
+        if (engine) {
+            engine.handleSheetChange({
+                row: rowNumber,
+                column: 0,
+                operationType: 'DELETE',
+                editedBy: 'DASHBOARD_API'
+            });
+        } else {
+            logger.warn('No sync engine active to notify of sheet deletion');
+        }
 
         res.json({
             success: true,

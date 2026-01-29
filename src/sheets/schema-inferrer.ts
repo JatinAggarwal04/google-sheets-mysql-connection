@@ -218,6 +218,7 @@ export class SchemaInferrer {
             number: 3,
             date: 2,
             boolean: 1,
+            json: 5,
         };
 
         // If we see mixed types, prefer the more flexible one

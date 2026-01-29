@@ -28,6 +28,13 @@ export interface SyncEngineEvents {
     'status:update': (status: SyncStatus) => void;
 }
 
+export interface SyncEngineConfig {
+    connectionId?: number;
+    tableName: string;
+    spreadsheetId: string;
+    sheetName: string;
+}
+
 /**
  * Main sync engine that orchestrates bidirectional synchronization
  */
@@ -46,18 +53,26 @@ export class SyncEngine extends EventEmitter {
     private headers: string[] = [];
     private tableName: string;
 
-    constructor() {
+    constructor(config?: SyncEngineConfig) {
         super();
+        const globalConfig = getConfig();
+
+        // Use provided config or fall back to global
+        const sheetConfig = config ? {
+            spreadsheetId: config.spreadsheetId,
+            sheetName: config.sheetName
+        } : undefined;
+
+        this.tableName = config?.tableName ?? globalConfig.sync.tableName;
+
         this.mysqlClient = getMySQLClient();
-        this.sheetsClient = getSheetsClient();
+        this.sheetsClient = getSheetsClient(sheetConfig);
         this.cdcListener = getCDCListener();
-        this.pollingListener = getPollingListener();
+        this.pollingListener = getPollingListener(this.tableName); // Specific listener for this table
         this.changeQueue = getChangeQueue();
         this.conflictResolver = getConflictResolver();
 
-        const config = getConfig();
-        this.tableName = config.sync.tableName;
-        this.schemaManager = createSchemaManager(config.mysql.database);
+        this.schemaManager = createSchemaManager(globalConfig.mysql.database);
     }
 
     /**
@@ -244,10 +259,16 @@ export class SyncEngine extends EventEmitter {
      * Handle MySQL change (from CDC)
      */
     private handleMySQLChange(event: ChangeEvent): void {
+        // Filter events not for this table (crucial for CDC which is global)
+        if (event.tableName !== this.tableName) {
+            return;
+        }
+
         logger.info('MySQL change detected', {
             eventId: event.id,
             operation: event.operation,
             rowId: event.rowId,
+            table: this.tableName
         });
 
         // Check for potential conflict

@@ -268,6 +268,13 @@ export class MySQLClient {
     }
 
     /**
+     * Get database name
+     */
+    getDatabaseName(): string {
+        return getConfig().mysql.database;
+    }
+
+    /**
      * Gracefully close the pool
      */
     async disconnect(): Promise<void> {

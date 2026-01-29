@@ -11,8 +11,9 @@ import { webhookRouter } from './routes/webhook.js';
 import { syncRouter } from './routes/sync.js';
 import { healthRouter } from './routes/health.js';
 import { dataRouter } from './routes/data.js';
+import { connectionsRouter } from './routes/connections.js';
 import { WebSocketServer } from './websocket.js';
-import { getSyncEngine } from '../sync/sync-engine.js';
+import { getCoordinator } from '../sync/coordinator.js';
 
 const logger = createComponentLogger('Server');
 
@@ -77,6 +78,7 @@ export function createApp(): Express {
     app.use('/api/sync', syncRouter);
     app.use('/api/health', healthRouter);
     app.use('/api/data', dataRouter);
+    app.use('/api/connections', connectionsRouter);
 
     // Serve dashboard for root
     app.get('/', (req: Request, res: Response) => {
@@ -175,7 +177,12 @@ export class AppServer {
     private connectSyncEvents(): void {
         if (!this.wsServer) return;
 
-        const syncEngine = getSyncEngine();
+        const syncEngine = getCoordinator().getDefaultEngine();
+
+        if (!syncEngine) {
+            logger.info('No default sync engine active, skipping WebSocket event listeners');
+            return;
+        }
 
         syncEngine.on('sync:start', () => {
             this.wsServer?.broadcast({
@@ -184,7 +191,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('sync:complete', (stats) => {
+        syncEngine.on('sync:complete', (stats: any) => {
             this.wsServer?.broadcast({
                 type: 'sync:complete',
                 data: stats,
@@ -192,7 +199,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('sync:error', (error) => {
+        syncEngine.on('sync:error', (error: Error) => {
             this.wsServer?.broadcast({
                 type: 'sync:error',
                 data: { message: error.message },
@@ -200,7 +207,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('change:processed', (event) => {
+        syncEngine.on('change:processed', (event: any) => {
             this.wsServer?.broadcast({
                 type: 'change:processed',
                 data: {
@@ -213,7 +220,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('conflict:detected', (conflict) => {
+        syncEngine.on('conflict:detected', (conflict: any) => {
             this.wsServer?.broadcast({
                 type: 'conflict:detected',
                 data: {
@@ -224,7 +231,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('conflict:resolved', (resolution) => {
+        syncEngine.on('conflict:resolved', (resolution: any) => {
             this.wsServer?.broadcast({
                 type: 'conflict:resolved',
                 data: resolution,
@@ -232,7 +239,7 @@ export class AppServer {
             });
         });
 
-        syncEngine.on('status:update', (status) => {
+        syncEngine.on('status:update', (status: any) => {
             this.wsServer?.broadcast({
                 type: 'status:update',
                 data: status,

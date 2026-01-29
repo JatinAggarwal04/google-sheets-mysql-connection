@@ -40,10 +40,10 @@ export class SheetsClient {
     private lastResetTime = Date.now();
     private readonly MAX_REQUESTS_PER_MINUTE = 60;
 
-    constructor() {
-        const config = getConfig();
-        this.spreadsheetId = config.sheets.spreadsheetId;
-        this.sheetName = config.sheets.sheetName;
+    constructor(config?: { spreadsheetId: string; sheetName: string }) {
+        const globalConfig = getConfig();
+        this.spreadsheetId = config?.spreadsheetId ?? globalConfig.sheets.spreadsheetId;
+        this.sheetName = config?.sheetName ?? globalConfig.sheets.sheetName;
     }
 
     /**
@@ -475,7 +475,11 @@ let sheetsClientInstance: SheetsClient | null = null;
 /**
  * Get the Sheets client singleton
  */
-export function getSheetsClient(): SheetsClient {
+export function getSheetsClient(config?: { spreadsheetId: string; sheetName: string }): SheetsClient {
+    if (config) {
+        return new SheetsClient(config);
+    }
+
     if (!sheetsClientInstance) {
         sheetsClientInstance = new SheetsClient();
     }

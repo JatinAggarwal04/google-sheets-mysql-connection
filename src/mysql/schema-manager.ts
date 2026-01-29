@@ -10,7 +10,7 @@ const logger = createComponentLogger('SchemaManager');
  */
 export interface ColumnDefinition {
     name: string;
-    type: 'string' | 'number' | 'boolean' | 'date' | 'text';
+    type: 'string' | 'number' | 'boolean' | 'date' | 'text' | 'json';
     nullable?: boolean;
     defaultValue?: unknown;
 }
@@ -24,6 +24,7 @@ const TYPE_MAPPING: Record<ColumnDefinition['type'], string> = {
     boolean: 'TINYINT(1)',
     date: 'DATETIME',
     text: 'TEXT',
+    json: 'JSON',
 };
 
 /**

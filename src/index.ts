@@ -10,20 +10,17 @@ import { getConfig } from './config/index.js';
 import { createComponentLogger, logInfo, logError } from './utils/logger.js';
 import { isOperationalError } from './utils/errors.js';
 import { getServer } from './server/index.js';
-import { getSyncEngine } from './sync/sync-engine.js';
+import { getCoordinator } from './sync/coordinator.js';
 
-const logger = createComponentLogger('Main');
+// ... (logger)
 
-/**
- * Graceful shutdown handler
- */
 async function shutdown(signal: string): Promise<void> {
     logInfo(`Received ${signal}, starting graceful shutdown`);
 
     try {
-        // Stop sync engine first
-        const syncEngine = getSyncEngine();
-        await syncEngine.stop();
+        // Stop coordinator
+        const coordinator = getCoordinator();
+        await coordinator.stop();
 
         // Stop HTTP server
         const server = getServer();
@@ -32,14 +29,10 @@ async function shutdown(signal: string): Promise<void> {
         logInfo('Graceful shutdown complete');
         process.exit(0);
     } catch (error) {
-        logError('Error during shutdown', { error });
-        process.exit(1);
+        // ...
     }
 }
 
-/**
- * Main bootstrap function
- */
 async function main(): Promise<void> {
     try {
         // Load and validate config
@@ -51,13 +44,13 @@ async function main(): Promise<void> {
             tableName: config.sync.tableName,
         });
 
+        // Start coordinator
+        const coordinator = getCoordinator();
+        await coordinator.start();
+
         // Start HTTP server
         const server = getServer();
         await server.start();
-
-        // Start sync engine
-        const syncEngine = getSyncEngine();
-        await syncEngine.start();
 
         logInfo('Platform started successfully', {
             dashboardUrl: `http://localhost:${config.port}`,
