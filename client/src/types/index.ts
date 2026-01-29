@@ -11,7 +11,7 @@ export interface Session {
 }
 
 export interface Connection {
-    id: number;
+    id: string;
     name: string;
     spreadsheetId: string;
     sheetName: string;

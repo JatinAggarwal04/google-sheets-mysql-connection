@@ -51,6 +51,7 @@ export class SyncEngine extends EventEmitter {
     private isRunning = false;
     private isSyncing = false;
     private syncInterval: ReturnType<typeof setInterval> | null = null;
+    private sheetPollingInterval: ReturnType<typeof setInterval> | null = null;
     private headers: string[] = [];
     private tableName: string;
     private connectionId?: string;
@@ -171,6 +172,9 @@ export class SyncEngine extends EventEmitter {
             // Start processing loop
             this.startProcessingLoop();
 
+            // Start Sheet Polling (Replacement for GAS Webhooks)
+            this.startSheetPolling();
+
             this.isRunning = true;
             this.emitStatus();
 
@@ -180,6 +184,95 @@ export class SyncEngine extends EventEmitter {
             throw new SyncError('Failed to start sync engine', {
                 context: { error: String(error) },
             });
+        }
+    }
+
+    /**
+     * Start polling Sheets for changes
+     */
+    private startSheetPolling(): void {
+        const config = getConfig();
+        // Poll every 10 seconds (configurable?)
+        const pollInterval = 10000;
+
+        this.sheetPollingInterval = setInterval(async () => {
+            if (this.isSyncing) return;
+            try {
+                await this.checkForSheetChanges();
+            } catch (error) {
+                logger.error('Sheet polling failed', { error });
+            }
+        }, pollInterval);
+
+        logger.info('Sheet polling started', { intervalMs: pollInterval });
+    }
+
+    /**
+     * Check for changes in Sheet (Polling Strategy)
+     */
+    private async checkForSheetChanges(): Promise<void> {
+        // Reuse initial sync logic but optimized? 
+        // For now, full compare is safest without webhooks.
+        // We can't easily detect "what changed" without reading all.
+
+        try {
+            const sheetData = await this.sheetsClient.getSheetData();
+            // Compare with MySQL
+            const existingRows = await this.mysqlClient.getAllRows<RowDataPacket & { _row_number: number }>(this.tableName);
+            const existingByRowNumber = new Map(existingRows.map(r => [r._row_number, r]));
+
+            for (const row of sheetData.rows) {
+                const existing = existingByRowNumber.get(row.rowNumber);
+                if (!existing) {
+                    // New Row in Sheet -> Insert to MySQL
+                    this.handleSheetChange({
+                        row: row.rowNumber,
+                        column: 0, // Unknown
+                        operationType: 'INSERT',
+                        rowData: row.data,
+                        editedBy: 'POLLING'
+                    });
+                } else {
+                    // Check for variance
+                    let hasChange = false;
+                    // Only check mapped columns/headers
+                    for (const header of this.headers) {
+                        // Simple equality check (convert to string for safety)
+                        const sheetVal = String(row.data[header] ?? '');
+                        const dbVal = String(existing[header] ?? '');
+                        if (sheetVal !== dbVal) {
+                            hasChange = true;
+                            break;
+                        }
+                    }
+
+                    if (hasChange) {
+                        this.handleSheetChange({
+                            row: row.rowNumber,
+                            column: 0,
+                            operationType: 'UPDATE',
+                            rowData: row.data,
+                            editedBy: 'POLLING'
+                        });
+                    }
+                    // Mark as visited
+                    existingByRowNumber.delete(row.rowNumber);
+                }
+            }
+
+            // Remaining in existingByRowNumber are deleted from Sheet
+            for (const [rowNum, val] of existingByRowNumber) {
+                this.handleSheetChange({
+                    row: rowNum,
+                    column: 0,
+                    operationType: 'DELETE',
+                    editedBy: 'POLLING'
+                });
+            }
+
+        } catch (error) {
+            // ignore network glitches
+            logger.warn('Error during sheet polling check', { error });
         }
     }
 
@@ -631,6 +724,11 @@ export class SyncEngine extends EventEmitter {
         if (this.syncInterval) {
             clearInterval(this.syncInterval);
             this.syncInterval = null;
+        }
+
+        if (this.sheetPollingInterval) {
+            clearInterval(this.sheetPollingInterval);
+            this.sheetPollingInterval = null;
         }
 
         await this.cdcListener.stop();

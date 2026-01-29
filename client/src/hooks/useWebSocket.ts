@@ -36,21 +36,21 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
             wsRef.current = new WebSocket(wsUrl);
 
             wsRef.current.onopen = () => {
-                console.log('[WebSocket] Connected');
+                // console.log('[WebSocket] Connected');
                 setIsConnected(true);
                 reconnectAttemptsRef.current = 0;
                 onConnect?.();
             };
 
             wsRef.current.onclose = () => {
-                console.log('[WebSocket] Disconnected');
+                // console.log('[WebSocket] Disconnected');
                 setIsConnected(false);
                 onDisconnect?.();
 
                 // Attempt to reconnect
                 if (reconnectAttemptsRef.current < maxReconnectAttempts) {
                     reconnectAttemptsRef.current++;
-                    console.log(`[WebSocket] Reconnecting in ${reconnectInterval}ms (attempt ${reconnectAttemptsRef.current})`);
+                    // console.log(`[WebSocket] Reconnecting in ${reconnectInterval}ms (attempt ${reconnectAttemptsRef.current})`);
                     reconnectTimeoutRef.current = window.setTimeout(connect, reconnectInterval);
                 }
             };

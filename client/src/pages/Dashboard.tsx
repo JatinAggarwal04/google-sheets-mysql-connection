@@ -22,7 +22,24 @@ export default function Dashboard() {
     // WebSocket for real-time updates
     const { isConnected: rawIsConnected } = useWebSocket({
         onMessage: (msg: WebSocketMessage) => {
-            addLogEntry(msg.type, JSON.stringify(msg.data || {}));
+            // Sanitize log message - avoid dumping raw data with IDs
+            let logMsg = '';
+            if (msg.type === 'sync:complete') {
+                const data = msg.data as any;
+                logMsg = `Sync complete: ${data.processed} records in ${data.duration}ms`;
+            } else if (msg.type === 'change:processed') {
+                const data = msg.data as any;
+                logMsg = `Processed ${data.operation} on ${data.tableName} (Row ${data.rowId})`;
+            } else if (msg.type === 'conflict:detected') {
+                logMsg = 'Conflict detected between Sheet and MySQL';
+            } else if (msg.type === 'conflict:resolved') {
+                const data = msg.data as any;
+                logMsg = `Conflict resolved: ${data.winner} version won`;
+            } else {
+                logMsg = msg.type;
+            }
+
+            addLogEntry(msg.type, logMsg);
 
             // Update status on certain events
             if (['sync:complete', 'status:update'].includes(msg.type)) {
@@ -88,8 +105,9 @@ export default function Dashboard() {
     };
 
     const loadSyncStatus = async () => {
+        if (!currentConnection?.id) return;
         try {
-            const status = await api.fetchSyncStatus(currentConnection?.id);
+            const status = await api.fetchSyncStatus(currentConnection.id);
             setSyncStatus(status);
         } catch (err) {
             console.error('Failed to load sync status:', err);
@@ -121,8 +139,9 @@ export default function Dashboard() {
     };
 
     const handleTriggerSync = async () => {
+        if (!currentConnection?.id) return;
         try {
-            await api.triggerSync(currentConnection?.id);
+            await api.triggerSync(currentConnection.id);
             addLogEntry('info', 'Manual sync triggered');
         } catch (err: any) {
             setError(err.message);
