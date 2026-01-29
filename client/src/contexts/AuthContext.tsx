@@ -21,45 +21,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if there's an auth callback hash in the URL
-        const hasAuthCallback = window.location.hash.includes('access_token') ||
-            window.location.hash.includes('error');
-
-        // IMPORTANT: Set up auth state listener FIRST
-        // Supabase v2 automatically detects hash fragments and fires events
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log('Auth state change:', event, session?.user?.email);
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
-
-            // Clean up the URL hash after successful OAuth
-            if (event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
-                window.history.replaceState(null, '', window.location.pathname);
-            }
-        });
-
-        // Then get initial session (this will also trigger onAuthStateChange if hash is present)
+        // Get initial session
         const initSession = async () => {
-            // If there's an OAuth callback, give Supabase a moment to process the hash
-            if (hasAuthCallback) {
-                console.log('OAuth callback detected, waiting for Supabase to process...');
-                // Supabase should auto-detect the hash, but we add a timeout as fallback
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
 
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error('Error getting session:', error);
-            }
-
-            // Only update if we don't have a session yet (avoid race condition with listener)
-            if (!session) {
+                setSession(session);
+                setUser(session?.user ?? null);
+            } catch (error) {
+                console.error('Error getting initial session:', error);
+            } finally {
                 setLoading(false);
             }
         };
 
         initSession();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
 
         return () => subscription.unsubscribe();
     }, []);
@@ -92,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                // Redirect directly to login page to preserve hash fragment
                 redirectTo: `${window.location.origin}/login`,
             },
         });

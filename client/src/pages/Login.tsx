@@ -1,22 +1,30 @@
 import { useState, FormEvent } from 'react';
+import type { FormEvent as ReactFormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
 
     const { signIn, signUp, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
+    // Site key should come from env but fallback to a placeholder if missing
+    // User needs to provide VITE_TURNSTILE_SITE_KEY in .env
+    const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || 'YOUR_TURNSTILE_SITE_KEY';
+
     const from = (location.state as any)?.from?.pathname || '/';
 
-    const handleSubmit = async (e: FormEvent) => {
+    const handleSubmit = async (e: ReactFormEvent) => {
         e.preventDefault();
         setError('');
         setMessage('');
@@ -24,7 +32,16 @@ export default function Login() {
 
         try {
             if (isSignUp) {
-                const { error, needsConfirmation } = await signUp(email, password);
+                if (password !== confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+
+                // For actual production, we need a valid captcha token
+                // if (!captchaToken) {
+                //     throw new Error("Please complete the captcha security check");
+                // }
+
+                const { error, needsConfirmation } = await signUp(email, password, captchaToken);
                 if (error) {
                     setError(error.message);
                 } else if (needsConfirmation) {
@@ -115,6 +132,40 @@ export default function Login() {
                             />
                         </div>
                     </div>
+
+                    {isSignUp && (
+                        <>
+                            <div className="input-group">
+                                <label htmlFor="confirmPassword">Confirm Password</label>
+                                <div className="input-wrapper">
+                                    <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                        <circle cx="12" cy="16" r="1" />
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    </svg>
+                                    <input
+                                        type="password"
+                                        id="confirmPassword"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        placeholder="Confirm your password"
+                                        required={isSignUp}
+                                        minLength={6}
+                                        autoComplete="new-password"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="input-group" style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                                <Turnstile
+                                    siteKey={SITE_KEY}
+                                    onSuccess={(token) => setCaptchaToken(token)}
+                                    onError={() => setError('Captcha validation failed')}
+                                    onExpire={() => setCaptchaToken(undefined)}
+                                />
+                            </div>
+                        </>
+                    )}
 
                     <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
                         <span>{loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}</span>
