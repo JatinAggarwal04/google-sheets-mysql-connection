@@ -1,0 +1,92 @@
+/**
+ * Google Sheets ↔ MySQL 2-Way Sync Platform
+ * Main entry point
+ */
+
+import { getConfig } from './config/index.js';
+import { createComponentLogger, logInfo, logError } from './utils/logger.js';
+import { isOperationalError } from './utils/errors.js';
+import { getServer } from './server/index.js';
+import { getSyncEngine } from './sync/sync-engine.js';
+
+const logger = createComponentLogger('Main');
+
+/**
+ * Graceful shutdown handler
+ */
+async function shutdown(signal: string): Promise<void> {
+    logInfo(`Received ${signal}, starting graceful shutdown`);
+
+    try {
+        // Stop sync engine first
+        const syncEngine = getSyncEngine();
+        await syncEngine.stop();
+
+        // Stop HTTP server
+        const server = getServer();
+        await server.stop();
+
+        logInfo('Graceful shutdown complete');
+        process.exit(0);
+    } catch (error) {
+        logError('Error during shutdown', { error });
+        process.exit(1);
+    }
+}
+
+/**
+ * Main bootstrap function
+ */
+async function main(): Promise<void> {
+    try {
+        // Load and validate config
+        const config = getConfig();
+
+        logInfo('Starting Google Sheets ↔ MySQL Sync Platform', {
+            port: config.port,
+            env: config.nodeEnv,
+            tableName: config.sync.tableName,
+        });
+
+        // Start HTTP server
+        const server = getServer();
+        await server.start();
+
+        // Start sync engine
+        const syncEngine = getSyncEngine();
+        await syncEngine.start();
+
+        logInfo('Platform started successfully', {
+            dashboardUrl: `http://localhost:${config.port}`,
+            apiUrl: `http://localhost:${config.port}/api`,
+        });
+
+        // Register shutdown handlers
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT', () => shutdown('SIGINT'));
+
+        // Handle uncaught exceptions
+        process.on('uncaughtException', (error: Error) => {
+            logError('Uncaught exception', { error });
+
+            if (!isOperationalError(error)) {
+                // Non-operational error, crash
+                process.exit(1);
+            }
+        });
+
+        // Handle unhandled promise rejections
+        process.on('unhandledRejection', (reason: unknown) => {
+            logError('Unhandled rejection', {
+                error: reason instanceof Error ? reason : new Error(String(reason))
+            });
+        });
+
+    } catch (error) {
+        logError('Failed to start platform', { error });
+        process.exit(1);
+    }
+}
+
+// Run
+main();
