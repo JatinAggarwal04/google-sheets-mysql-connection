@@ -89,7 +89,7 @@ export default function Dashboard() {
 
     const loadSyncStatus = async () => {
         try {
-            const status = await api.fetchSyncStatus();
+            const status = await api.fetchSyncStatus(currentConnection?.id);
             setSyncStatus(status);
         } catch (err) {
             console.error('Failed to load sync status:', err);
@@ -97,9 +97,10 @@ export default function Dashboard() {
     };
 
     const loadSheetsData = async () => {
+        if (!currentConnection?.id) return;
         try {
             setSheetsData(null); // Reset while loading
-            const data = await api.fetchSheetsData();
+            const data = await api.fetchSheetsData(currentConnection.id);
             setSheetsData(data);
         } catch (err) {
             console.error('Failed to load sheets data:', err);
@@ -108,9 +109,10 @@ export default function Dashboard() {
     };
 
     const loadMySQLData = async () => {
+        if (!currentConnection?.id) return;
         try {
             setMysqlData(null); // Reset while loading
-            const data = await api.fetchMySQLData();
+            const data = await api.fetchMySQLData(currentConnection.id);
             setMysqlData(data);
         } catch (err) {
             console.error('Failed to load MySQL data:', err);
@@ -120,7 +122,7 @@ export default function Dashboard() {
 
     const handleTriggerSync = async () => {
         try {
-            await api.triggerSync();
+            await api.triggerSync(currentConnection?.id);
             addLogEntry('info', 'Manual sync triggered');
         } catch (err: any) {
             setError(err.message);

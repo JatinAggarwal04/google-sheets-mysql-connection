@@ -82,21 +82,21 @@ export async function previewSheet(spreadsheetId: string, sheetName: string) {
 
 // ========== DATA API ==========
 
-export async function fetchSheetsData() {
+export async function fetchSheetsData(connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/sheets`, { headers });
+    const response = await fetch(`${API_BASE}/data/sheets?connectionId=${connectionId}`, { headers });
     return handleResponse<{ headers: string[]; rows: any[] }>(response);
 }
 
-export async function fetchMySQLData() {
+export async function fetchMySQLData(connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/mysql`, { headers });
+    const response = await fetch(`${API_BASE}/data/mysql?connectionId=${connectionId}`, { headers });
     return handleResponse<{ columns: string[]; rows: any[] }>(response);
 }
 
-export async function addSheetRow(data: Record<string, unknown>) {
+export async function addSheetRow(data: Record<string, unknown>, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/sheets`, {
+    const response = await fetch(`${API_BASE}/data/sheets?connectionId=${connectionId}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data),
@@ -104,9 +104,9 @@ export async function addSheetRow(data: Record<string, unknown>) {
     return handleResponse<{ success: boolean; rowNumber: number }>(response);
 }
 
-export async function updateSheetRow(row: number, data: Record<string, unknown>) {
+export async function updateSheetRow(row: number, data: Record<string, unknown>, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/sheets/${row}`, {
+    const response = await fetch(`${API_BASE}/data/sheets/${row}?connectionId=${connectionId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data),
@@ -114,18 +114,18 @@ export async function updateSheetRow(row: number, data: Record<string, unknown>)
     return handleResponse<{ success: boolean }>(response);
 }
 
-export async function deleteSheetRow(row: number) {
+export async function deleteSheetRow(row: number, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/sheets/${row}`, {
+    const response = await fetch(`${API_BASE}/data/sheets/${row}?connectionId=${connectionId}`, {
         method: 'DELETE',
         headers,
     });
     return handleResponse<{ success: boolean }>(response);
 }
 
-export async function addMySQLRow(data: Record<string, unknown>) {
+export async function addMySQLRow(data: Record<string, unknown>, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/mysql`, {
+    const response = await fetch(`${API_BASE}/data/mysql?connectionId=${connectionId}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data),
@@ -133,9 +133,9 @@ export async function addMySQLRow(data: Record<string, unknown>) {
     return handleResponse<{ success: boolean; id: number }>(response);
 }
 
-export async function updateMySQLRow(id: number, data: Record<string, unknown>) {
+export async function updateMySQLRow(id: number, data: Record<string, unknown>, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/mysql/${id}`, {
+    const response = await fetch(`${API_BASE}/data/mysql/${id}?connectionId=${connectionId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data),
@@ -143,9 +143,9 @@ export async function updateMySQLRow(id: number, data: Record<string, unknown>) 
     return handleResponse<{ success: boolean }>(response);
 }
 
-export async function deleteMySQLRow(id: number) {
+export async function deleteMySQLRow(id: number, connectionId: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/data/mysql/${id}`, {
+    const response = await fetch(`${API_BASE}/data/mysql/${id}?connectionId=${connectionId}`, {
         method: 'DELETE',
         headers,
     });
@@ -154,15 +154,21 @@ export async function deleteMySQLRow(id: number) {
 
 // ========== SYNC API ==========
 
-export async function fetchSyncStatus() {
+export async function fetchSyncStatus(connectionId?: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/sync/status`, { headers });
+    const url = connectionId
+        ? `${API_BASE}/sync/status?connectionId=${connectionId}`
+        : `${API_BASE}/sync/status`;
+    const response = await fetch(url, { headers });
     return handleResponse<any>(response);
 }
 
-export async function triggerSync() {
+export async function triggerSync(connectionId?: string) {
     const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE}/sync/trigger`, {
+    const url = connectionId
+        ? `${API_BASE}/sync/trigger?connectionId=${connectionId}`
+        : `${API_BASE}/sync/trigger`;
+    const response = await fetch(url, {
         method: 'POST',
         headers,
     });
