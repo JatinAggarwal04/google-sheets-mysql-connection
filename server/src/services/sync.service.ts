@@ -359,8 +359,18 @@ export async function processSyncJob(job: Job<SyncJobPayload>): Promise<void> {
         let result: SyncResult;
 
         if (direction === 'sheets_to_mysql') {
+            if (integration.sync_direction === 'mysql_to_sheets') {
+                logger.warn(`Skipping sheets_to_mysql sync for integration ${integrationId} (configured as mysql_to_sheets)`);
+                await updateSyncLog(logId, 'completed', undefined, 'Skipped: Invalid direction');
+                return;
+            }
             result = await syncSheetsToMySQL(integration, mappings, syncState!);
         } else {
+            if (integration.sync_direction === 'sheets_to_mysql') {
+                logger.warn(`Skipping mysql_to_sheets sync for integration ${integrationId} (configured as sheets_to_mysql)`);
+                await updateSyncLog(logId, 'completed', undefined, 'Skipped: Invalid direction');
+                return;
+            }
             result = await syncMySQLToSheets(integration, mappings, syncState!);
         }
 
