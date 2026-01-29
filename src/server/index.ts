@@ -10,6 +10,7 @@ import { AppError, isOperationalError, serializeError } from '../utils/errors.js
 import { webhookRouter } from './routes/webhook.js';
 import { syncRouter } from './routes/sync.js';
 import { healthRouter } from './routes/health.js';
+import { dataRouter } from './routes/data.js';
 import { WebSocketServer } from './websocket.js';
 import { getSyncEngine } from '../sync/sync-engine.js';
 
@@ -75,6 +76,7 @@ export function createApp(): Express {
     app.use('/api/webhook', webhookRouter);
     app.use('/api/sync', syncRouter);
     app.use('/api/health', healthRouter);
+    app.use('/api/data', dataRouter);
 
     // Serve dashboard for root
     app.get('/', (req: Request, res: Response) => {

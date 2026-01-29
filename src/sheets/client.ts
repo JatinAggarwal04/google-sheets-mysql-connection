@@ -400,6 +400,68 @@ export class SheetsClient {
     }
 
     /**
+     * Get all rows as simple data objects
+     */
+    async getAllRows(): Promise<Record<string, unknown>[]> {
+        const sheetData = await this.getSheetData();
+        return sheetData.rows.map(r => ({ _rowNumber: r.rowNumber, ...r.data }));
+    }
+
+    /**
+     * Update a row by row number (auto-fetches headers)
+     */
+    async updateRowAuto(rowNumber: number, data: Record<string, unknown>): Promise<void> {
+        const sheetData = await this.getSheetData();
+        await this.updateRow(rowNumber, data, sheetData.headers);
+    }
+
+    /**
+     * Append a new row (auto-fetches headers)
+     */
+    async appendRowAuto(data: Record<string, unknown>): Promise<number> {
+        const sheetData = await this.getSheetData();
+        return this.appendRow(data, sheetData.headers);
+    }
+
+    /**
+     * Delete a row (actually removes it from the sheet)
+     */
+    async deleteRow(rowNumber: number): Promise<void> {
+        if (!this.sheets) {
+            throw new SheetsApiError('Sheets client not initialized');
+        }
+
+        try {
+            const metadata = await this.getMetadata();
+
+            await this.withRetry(() =>
+                this.sheets!.spreadsheets.batchUpdate({
+                    spreadsheetId: this.spreadsheetId,
+                    requestBody: {
+                        requests: [{
+                            deleteDimension: {
+                                range: {
+                                    sheetId: metadata.sheetId,
+                                    dimension: 'ROWS',
+                                    startIndex: rowNumber - 1, // 0-indexed
+                                    endIndex: rowNumber,
+                                },
+                            },
+                        }],
+                    },
+                })
+            );
+
+            logger.info('Row deleted', { rowNumber });
+        } catch (error) {
+            throw new SheetsApiError('Failed to delete row', {
+                cause: error instanceof Error ? error : new Error(String(error)),
+                context: { rowNumber },
+            });
+        }
+    }
+
+    /**
      * Check if initialized
      */
     getIsInitialized(): boolean {

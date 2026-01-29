@@ -32,6 +32,13 @@ A production-grade bidirectional data synchronization platform between Google Sh
 - **Conflict Viewer**: Monitor and resolve conflicts manually
 - **System Metrics**: Queue depth, connection status, health indicators
 
+### Data Viewer/Editor
+- **Tabbed Interface**: Switch between Status, Google Sheets, and MySQL views
+- **Data Tables**: View all data from both sources in responsive tables
+- **Inline Editing**: Edit any row directly from the dashboard
+- **Add/Delete Rows**: Create and delete entries in either source
+- **Auto-Refresh**: Data updates automatically after sync events
+
 ## Architecture
 
 ```
@@ -185,6 +192,15 @@ Open http://localhost:3000 for the dashboard.
 | `/api/sync/queue` | GET | - | Queue statistics |
 | `/api/webhook/sheets` | POST | HMAC | Receive Sheet changes |
 | `/api/webhook/test` | POST | - | Test webhook (dev only) |
+| `/api/data/info` | GET | - | Get connection info for both sources |
+| `/api/data/sheets` | GET | - | Fetch all Google Sheets data |
+| `/api/data/mysql` | GET | - | Fetch all MySQL data |
+| `/api/data/sheets/:row` | PUT | - | Update a row in Google Sheets |
+| `/api/data/mysql/:id` | PUT | - | Update a row in MySQL |
+| `/api/data/sheets` | POST | - | Add a new row to Google Sheets |
+| `/api/data/mysql` | POST | - | Add a new row to MySQL |
+| `/api/data/sheets/:row` | DELETE | - | Delete a row from Google Sheets |
+| `/api/data/mysql/:id` | DELETE | - | Delete a row from MySQL |
 
 ### Authentication
 
