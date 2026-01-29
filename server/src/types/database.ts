@@ -67,6 +67,7 @@ export interface Database {
                     host: string;
                     port: number;
                     database: string;
+                    username: string;
                     encrypted_credentials: string;
                     is_valid: boolean;
                     created_at: string;
@@ -79,6 +80,7 @@ export interface Database {
                     host: string;
                     port: number;
                     database: string;
+                    username: string;
                     encrypted_credentials: string;
                     is_valid?: boolean;
                     created_at?: string;
@@ -171,8 +173,8 @@ export interface Database {
                 Row: {
                     id: string;
                     integration_id: string;
-                    last_sheet_hash: string | null;
-                    last_mysql_hash: string | null;
+                    sheets_hash: string | null;
+                    mysql_hash: string | null;
                     last_sync_version: number;
                     conflict_resolution: 'sheets_wins' | 'mysql_wins' | 'latest_wins';
                     created_at: string;
@@ -181,16 +183,16 @@ export interface Database {
                 Insert: {
                     id?: string;
                     integration_id: string;
-                    last_sheet_hash?: string | null;
-                    last_mysql_hash?: string | null;
+                    sheets_hash?: string | null;
+                    mysql_hash?: string | null;
                     last_sync_version?: number;
                     conflict_resolution?: 'sheets_wins' | 'mysql_wins' | 'latest_wins';
                     created_at?: string;
                     updated_at?: string;
                 };
                 Update: {
-                    last_sheet_hash?: string | null;
-                    last_mysql_hash?: string | null;
+                    sheets_hash?: string | null;
+                    mysql_hash?: string | null;
                     last_sync_version?: number;
                     conflict_resolution?: 'sheets_wins' | 'mysql_wins' | 'latest_wins';
                     updated_at?: string;

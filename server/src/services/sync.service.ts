@@ -187,7 +187,7 @@ async function syncSheetsToMySQL(
     // Compute hash to check for changes
     const sheetHash = computeHash(sheetData.rows);
 
-    if (sheetHash === syncState.last_sheet_hash) {
+    if (sheetHash === syncState.sheets_hash) {
         logger.info(`No changes detected in sheet for integration ${integration.id}`);
         return result;
     }
@@ -252,7 +252,7 @@ async function syncSheetsToMySQL(
 
     // Update sync state
     await integrationService.updateSyncState(integration.id, {
-        last_sheet_hash: sheetHash,
+        sheets_hash: sheetHash,
         last_sync_version: syncState.last_sync_version + 1,
     });
 
@@ -283,7 +283,7 @@ async function syncMySQLToSheets(
     // Compute hash
     const mysqlHash = computeHash(mysqlData);
 
-    if (mysqlHash === syncState.last_mysql_hash) {
+    if (mysqlHash === syncState.mysql_hash) {
         logger.info(`No changes detected in MySQL for integration ${integration.id}`);
         return result;
     }
@@ -314,7 +314,7 @@ async function syncMySQLToSheets(
 
     // Update sync state
     await integrationService.updateSyncState(integration.id, {
-        last_mysql_hash: mysqlHash,
+        mysql_hash: mysqlHash,
         last_sync_version: syncState.last_sync_version + 1,
     });
 

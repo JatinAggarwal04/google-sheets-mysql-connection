@@ -3,7 +3,7 @@
 // ===========================================
 
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
-import { getRedisClient } from '../config/redis.js';
+import { createBullMQConnection } from '../config/redis.js';
 import { logger } from '../lib/logger.js';
 import type { SyncJobPayload } from '../types/api.js';
 
@@ -19,10 +19,10 @@ let queueEvents: QueueEvents | null = null;
 export function getSyncQueue(): Queue<SyncJobPayload> {
     if (syncQueue) return syncQueue;
 
-    const redis = getRedisClient();
+    const connection = createBullMQConnection();
 
     syncQueue = new Queue<SyncJobPayload>(SYNC_QUEUE_NAME, {
-        connection: redis,
+        connection,
         defaultJobOptions: {
             attempts: 3,
             backoff: {
@@ -67,13 +67,13 @@ export function startSyncWorker(
         return syncWorker;
     }
 
-    const redis = getRedisClient();
+    const connection = createBullMQConnection();
 
     syncWorker = new Worker<SyncJobPayload>(
         SYNC_QUEUE_NAME,
         processor,
         {
-            connection: redis,
+            connection,
             concurrency: 5,
             limiter: {
                 max: 10,
@@ -105,10 +105,10 @@ export function startSyncWorker(
 export function getQueueEvents(): QueueEvents {
     if (queueEvents) return queueEvents;
 
-    const redis = getRedisClient();
+    const connection = createBullMQConnection();
 
     queueEvents = new QueueEvents(SYNC_QUEUE_NAME, {
-        connection: redis,
+        connection,
     });
 
     return queueEvents;

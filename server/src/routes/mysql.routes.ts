@@ -198,4 +198,174 @@ router.get('/connections/:id/tables/:tableName/schema', async (req: Request, res
     }
 });
 
+/**
+ * GET /api/mysql/connections/:id/tables/:tableName/data
+ * Get table data
+ */
+router.get('/connections/:id/tables/:tableName/data', async (req: Request, res: Response) => {
+    try {
+        // Verify ownership
+        await mysqlService.getMySQLConnection(req.tenant!.id, req.params.id);
+
+        const data = await mysqlService.getTableData(
+            req.params.id,
+            req.params.tableName
+        );
+
+        res.json({
+            success: true,
+            data,
+        });
+    } catch (error) {
+        logger.error('Failed to get table data:', error);
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Failed to get table data' },
+        });
+    }
+});
+
+/**
+ * Validates row data for null/empty values
+ */
+function validateRowData(row: Record<string, unknown>): { valid: boolean; emptyFields: string[] } {
+    const emptyFields: string[] = [];
+    for (const [key, value] of Object.entries(row)) {
+        if (value === null || value === undefined || value === '') {
+            emptyFields.push(key);
+        }
+    }
+    return { valid: emptyFields.length === 0, emptyFields };
+}
+
+/**
+ * POST /api/mysql/connections/:id/tables/:tableName/rows
+ * Insert row into table
+ */
+router.post('/connections/:id/tables/:tableName/rows', async (req: Request, res: Response) => {
+    try {
+        // Verify ownership
+        await mysqlService.getMySQLConnection(req.tenant!.id, req.params.id);
+
+        const row = req.body;
+
+        // Validate for null/empty values
+        const validation = validateRowData(row);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: `Cannot save row with empty values. Please fill in: ${validation.emptyFields.join(', ')}`,
+                    emptyFields: validation.emptyFields,
+                },
+            });
+        }
+
+        await mysqlService.insertRows(req.params.id, req.params.tableName, [row]);
+
+        res.status(201).json({
+            success: true,
+            data: { message: 'Row inserted successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to insert row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to insert row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
+/**
+ * PUT /api/mysql/connections/:id/tables/:tableName/rows/:primaryKeyValue
+ * Update row in table
+ */
+router.put('/connections/:id/tables/:tableName/rows/:primaryKeyValue', async (req: Request, res: Response) => {
+    try {
+        // Verify ownership
+        await mysqlService.getMySQLConnection(req.tenant!.id, req.params.id);
+
+        const { primaryKeyColumn, data } = req.body;
+
+        if (!primaryKeyColumn || !data) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'primaryKeyColumn and data are required' },
+            });
+        }
+
+        // Validate for null/empty values
+        const validation = validateRowData(data);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: `Cannot save row with empty values. Please fill in: ${validation.emptyFields.join(', ')}`,
+                    emptyFields: validation.emptyFields,
+                },
+            });
+        }
+
+        await mysqlService.updateRows(req.params.id, req.params.tableName, [{
+            data,
+            primaryKeyColumn,
+            primaryKeyValue: req.params.primaryKeyValue,
+        }]);
+
+        res.json({
+            success: true,
+            data: { message: 'Row updated successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to update row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to update row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
+/**
+ * DELETE /api/mysql/connections/:id/tables/:tableName/rows/:primaryKeyValue
+ * Delete row from table
+ */
+router.delete('/connections/:id/tables/:tableName/rows/:primaryKeyValue', async (req: Request, res: Response) => {
+    try {
+        // Verify ownership
+        await mysqlService.getMySQLConnection(req.tenant!.id, req.params.id);
+
+        const { primaryKeyColumn } = req.query;
+
+        if (!primaryKeyColumn) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'primaryKeyColumn query parameter is required' },
+            });
+        }
+
+        await mysqlService.deleteRows(
+            req.params.id,
+            req.params.tableName,
+            primaryKeyColumn as string,
+            [req.params.primaryKeyValue]
+        );
+
+        res.json({
+            success: true,
+            data: { message: 'Row deleted successfully' },
+        });
+    } catch (error) {
+        logger.error('Failed to delete row:', error);
+        const message = error instanceof Error ? error.message : 'Failed to delete row';
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message },
+        });
+    }
+});
+
 export default router;

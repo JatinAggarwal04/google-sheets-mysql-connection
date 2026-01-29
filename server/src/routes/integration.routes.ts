@@ -227,4 +227,25 @@ router.get('/:id/jobs', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/integrations/:id/sync
+ * Trigger manual sync
+ */
+router.post('/:id/sync', async (req: Request, res: Response) => {
+    try {
+        await integrationService.triggerSync(req.tenant!.id, req.params.id);
+
+        res.json({
+            success: true,
+            data: { message: 'Sync triggered' },
+        });
+    } catch (error) {
+        logger.error('Failed to trigger sync:', error);
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Failed to trigger sync' },
+        });
+    }
+});
+
 export default router;

@@ -18,6 +18,7 @@ import {
     Sheet,
     Database,
     ArrowRight,
+    Zap,
 } from 'lucide-react';
 import './IntegrationDetail.css';
 
@@ -108,6 +109,15 @@ export function IntegrationDetailPage() {
         }
     };
 
+    const handleSync = async () => {
+        try {
+            await api.integrations.sync(id!);
+            await loadLogs();
+        } catch (err) {
+            setError('Failed to trigger sync');
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this integration?')) return;
 
@@ -190,6 +200,10 @@ export function IntegrationDetailPage() {
                     <button className="btn btn-secondary" onClick={() => { loadIntegration(); loadLogs(); }}>
                         <RefreshCw size={18} />
                         Refresh
+                    </button>
+                    <button className="btn btn-primary" onClick={handleSync}>
+                        <Zap size={18} />
+                        Sync Now
                     </button>
                     {integration.status === 'active' ? (
                         <button className="btn btn-secondary" onClick={handlePause}>

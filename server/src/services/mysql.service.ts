@@ -138,6 +138,7 @@ export async function createMySQLConnection(
             host: request.host,
             port: request.port,
             database: request.database,
+            username: request.username,
             encrypted_credentials: encryptedCredentials,
             is_valid: true,
         })
@@ -282,6 +283,30 @@ export async function getTableData(
 }
 
 /**
+ * Converts ISO 8601 datetime strings to MySQL DATETIME format
+ */
+function formatValueForMySQL(value: unknown): unknown {
+    if (typeof value === 'string') {
+        // Check if it's an ISO 8601 datetime string (e.g., 2026-01-28T18:30:00.000Z)
+        const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+        if (isoDateRegex.test(value)) {
+            // Convert to MySQL format: YYYY-MM-DD HH:MM:SS
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+                const year = date.getUTCFullYear();
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                const hours = String(date.getUTCHours()).padStart(2, '0');
+                const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+                const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
+        }
+    }
+    return value;
+}
+
+/**
  * Inserts rows into table
  */
 export async function insertRows(
@@ -296,13 +321,14 @@ export async function insertRows(
         const columns = Object.keys(rows[0]);
         const placeholders = columns.map(() => '?').join(', ');
         const columnsList = columns.map((c) => `\`${c}\``).join(', ');
+        const updateClause = columns.map((c) => `\`${c}\` = VALUES(\`${c}\`)`).join(', ');
 
         let insertedCount = 0;
 
         for (const row of rows) {
-            const values = columns.map((c) => row[c]);
+            const values = columns.map((c) => formatValueForMySQL(row[c]));
             await pool.query(
-                `INSERT INTO \`${tableName}\` (${columnsList}) VALUES (${placeholders})`,
+                `INSERT INTO \`${tableName}\` (${columnsList}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClause}`,
                 values
             );
             insertedCount++;
@@ -310,8 +336,9 @@ export async function insertRows(
 
         return insertedCount;
     } catch (error) {
-        logger.error('Failed to insert rows:', error);
-        throw new ExternalServiceError('MySQL', 'Failed to insert rows');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(`Failed to insert rows into ${tableName}:`, error);
+        throw new ExternalServiceError('MySQL', `Failed to insert rows: ${errorMessage}`);
     }
 }
 
@@ -332,7 +359,7 @@ export async function updateRows(
         for (const row of rows) {
             const columns = Object.keys(row.data).filter((c) => c !== row.primaryKeyColumn);
             const setClause = columns.map((c) => `\`${c}\` = ?`).join(', ');
-            const values = [...columns.map((c) => row.data[c]), row.primaryKeyValue];
+            const values = [...columns.map((c) => formatValueForMySQL(row.data[c])), formatValueForMySQL(row.primaryKeyValue)];
 
             await pool.query(
                 `UPDATE \`${tableName}\` SET ${setClause} WHERE \`${row.primaryKeyColumn}\` = ?`,

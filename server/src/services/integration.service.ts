@@ -308,3 +308,27 @@ export async function resumeIntegration(
 
     logger.info(`Resumed integration ${integrationId}`);
 }
+
+/**
+ * Triggers manual sync
+ */
+export async function triggerSync(
+    tenantId: string,
+    integrationId: string
+): Promise<void> {
+    const integration = await getIntegration(tenantId, integrationId);
+
+    // Reset status to active if it was in error state (allows retry)
+    if (integration.status === 'error' || integration.status === 'paused') {
+        await updateIntegrationStatus(integrationId, 'active');
+    }
+
+    await enqueueSyncJob({
+        integrationId,
+        tenantId,
+        direction: integration.sync_direction === 'mysql_to_sheets' ? 'mysql_to_sheets' : 'sheets_to_mysql',
+        triggeredBy: 'manual',
+    });
+
+    logger.info(`Triggered manual sync for integration ${integrationId}`);
+}

@@ -15,7 +15,6 @@ export function getRedisClient(): Redis {
 
     redisClient = new Redis(env.REDIS_URL, {
         maxRetriesPerRequest: 3,
-        retryDelayOnFailover: 100,
         enableReadyCheck: true,
         lazyConnect: true,
     });
@@ -33,6 +32,16 @@ export function getRedisClient(): Redis {
     });
 
     return redisClient;
+}
+
+// Separate connection for BullMQ (requires maxRetriesPerRequest: null)
+export function createBullMQConnection(): Redis {
+    const env = getEnv();
+
+    return new Redis(env.REDIS_URL, {
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+    });
 }
 
 export async function connectRedis(): Promise<void> {

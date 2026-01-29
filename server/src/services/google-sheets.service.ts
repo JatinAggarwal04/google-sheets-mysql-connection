@@ -202,6 +202,36 @@ export async function appendSheetRows(
 }
 
 /**
+ * Updates a single row in sheet (rowIndex is 1-indexed, where 1 is header row, 2 is first data row)
+ */
+export async function updateSheetRow(
+    connectionId: string,
+    spreadsheetId: string,
+    sheetName: string,
+    rowIndex: number,
+    headers: string[],
+    row: Record<string, unknown>
+): Promise<void> {
+    try {
+        const sheets = await getSheetsClient(connectionId);
+
+        const values = [headers.map((h) => row[h] ?? '')];
+
+        await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `'${sheetName}'!A${rowIndex}`,
+            valueInputOption: 'RAW',
+            requestBody: { values },
+        });
+
+        logger.info(`Updated row ${rowIndex} in sheet ${sheetName}`);
+    } catch (error) {
+        logger.error('Failed to update sheet row:', error);
+        throw new ExternalServiceError('Google Sheets', 'Failed to update row');
+    }
+}
+
+/**
  * Deletes rows from sheet by row indices (1-indexed)
  */
 export async function deleteSheetRows(

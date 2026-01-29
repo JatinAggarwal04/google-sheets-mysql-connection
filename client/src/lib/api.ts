@@ -190,6 +190,8 @@ export const api = {
 
         resume: (id: string) => request(`/integrations/${id}/resume`, { method: 'POST' }),
 
+        sync: (id: string) => request(`/integrations/${id}/sync`, { method: 'POST' }),
+
         getLogs: (id: string) => request<Array<{
             id: string;
             status: string;
