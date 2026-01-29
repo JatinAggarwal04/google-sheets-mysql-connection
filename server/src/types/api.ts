@@ -39,6 +39,7 @@ export const createIntegrationSchema = z.object({
     spreadsheetId: z.string().min(1),
     sheetName: z.string().min(1),
     tableName: z.string().min(1),
+    createNewTable: z.boolean().optional(),
     syncDirection: z.enum(['sheets_to_mysql', 'mysql_to_sheets', 'bidirectional']),
     columnMappings: z.array(
         z.object({

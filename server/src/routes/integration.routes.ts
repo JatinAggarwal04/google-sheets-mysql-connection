@@ -45,6 +45,7 @@ router.post('/', async (req: Request, res: Response) => {
         const validation = createIntegrationSchema.safeParse(req.body);
 
         if (!validation.success) {
+            logger.error('Validation Invalid:', JSON.stringify(validation.error.format(), null, 2));
             return res.status(400).json({
                 success: false,
                 error: {

@@ -7,6 +7,7 @@ import { getSupabaseAdmin } from '../config/supabase.js';
 import { logger } from '../lib/logger.js';
 import { NotFoundError, ValidationError } from '../lib/errors.js';
 import { enqueueSyncJob } from './queue.service.js';
+import * as mysqlService from './mysql.service.js';
 import type { Integration, ColumnMapping, SyncState } from '../types/database.js';
 import type { CreateIntegrationRequest } from '../types/api.js';
 
@@ -19,6 +20,21 @@ export async function createIntegration(
 ): Promise<Integration> {
     const supabase = getSupabaseAdmin();
     const integrationId = uuidv4();
+
+    // Create table if requested
+    if (request.createNewTable) {
+        const columns = request.columnMappings.map((m) => ({
+            name: m.mysqlColumn,
+            type: m.dataType,
+            isPrimaryKey: m.isPrimaryKey,
+        }));
+
+        await mysqlService.createTableIfNotExists(
+            request.mysqlConnectionId,
+            request.tableName,
+            columns
+        );
+    }
 
     // Start transaction-like operations
     // Create integration

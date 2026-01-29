@@ -427,8 +427,9 @@ export async function createTableIfNotExists(
 
         logger.info(`Created table ${tableName} if not exists`);
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error('Failed to create table:', error);
-        throw new ExternalServiceError('MySQL', 'Failed to create table');
+        throw new ExternalServiceError('MySQL', `Failed to create table: ${errorMessage}`);
     }
 }
 

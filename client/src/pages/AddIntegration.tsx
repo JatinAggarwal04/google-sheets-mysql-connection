@@ -262,6 +262,10 @@ export function AddIntegrationPage() {
                     setError('Please select a spreadsheet and sheet');
                     return;
                 }
+                if (createNewTable && !newTableName.trim()) {
+                    setError('Please enter a new table name');
+                    return;
+                }
                 if (!createNewTable && !selectedTable) {
                     setError('Please select a target table');
                     return;
@@ -302,16 +306,26 @@ export function AddIntegrationPage() {
 
     const handleCreateIntegration = async () => {
         try {
+            if (createNewTable && !newTableName.trim()) {
+                setError('Please enter a new table name');
+                return;
+            }
+            if (!createNewTable && !selectedTable) {
+                setError('Please select a target table');
+                return;
+            }
+
             setLoading(true);
             setError(null);
 
-            await api.integrations.create({
+            const payload = {
                 name: integrationName,
                 googleConnectionId: selectedGoogleConnection!,
                 mysqlConnectionId: selectedMysqlConnection!,
                 spreadsheetId: selectedSpreadsheet!,
                 sheetName: selectedSheet!,
                 tableName: createNewTable ? newTableName : selectedTable!,
+                createNewTable,
                 syncDirection,
                 columnMappings: columnMappings.map(m => ({
                     sheetColumn: m.sheetColumn,
@@ -320,7 +334,10 @@ export function AddIntegrationPage() {
                     isPrimaryKey: m.isPrimaryKey,
                 })),
                 conflictResolution: 'latest_wins',
-            });
+            };
+            console.log('Sending payload:', payload);
+
+            await api.integrations.create(payload);
 
             navigate('/dashboard');
         } catch (err) {

@@ -42,6 +42,7 @@ async function request<T>(
     const json: ApiResponse<T> = await response.json();
 
     if (!json.success) {
+        console.error('API Error:', json.error);
         throw new Error(json.error?.message || 'Request failed');
     }
 
@@ -212,6 +213,7 @@ export const api = {
             spreadsheetId: string;
             sheetName: string;
             tableName: string;
+            createNewTable?: boolean;
             syncDirection: string;
             columnMappings: Array<{
                 sheetColumn: string;
