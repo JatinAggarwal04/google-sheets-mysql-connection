@@ -58,7 +58,13 @@ connectionsRouter.get('/', async (req: Request, res: Response) => {
 connectionsRouter.get('/:id', async (req: Request, res: Response) => {
     try {
         if (!req.user) return;
-        const id = parseInt(req.params['id'] || '0', 10);
+        const id = req.params['id'];
+
+        if (!id) {
+            res.status(400).json({ error: 'Missing connection ID' });
+            return;
+        }
+
         const connection = await connectionManager.getConnection(req.user.id, id);
 
         if (!connection) {
@@ -144,7 +150,12 @@ connectionsRouter.post('/', async (req: Request, res: Response) => {
 connectionsRouter.delete('/:id', async (req: Request, res: Response) => {
     try {
         if (!req.user) return;
-        const id = parseInt(req.params['id'] || '0', 10);
+        const id = req.params['id'];
+
+        if (!id) {
+            res.status(400).json({ error: 'Missing connection ID' });
+            return;
+        }
 
         await connectionManager.deleteConnection(req.user.id, id);
         await coordinator.refreshConnections();
@@ -162,7 +173,12 @@ connectionsRouter.delete('/:id', async (req: Request, res: Response) => {
 connectionsRouter.post('/:id/pause', async (req: Request, res: Response) => {
     try {
         if (!req.user) return;
-        const id = parseInt(req.params['id'] || '0', 10);
+        const id = req.params['id'];
+
+        if (!id) {
+            res.status(400).json({ error: 'Missing connection ID' });
+            return;
+        }
 
         // Verify ownership
         const connection = await connectionManager.getConnection(req.user.id, id);
@@ -186,7 +202,12 @@ connectionsRouter.post('/:id/pause', async (req: Request, res: Response) => {
 connectionsRouter.post('/:id/resume', async (req: Request, res: Response) => {
     try {
         if (!req.user) return;
-        const id = parseInt(req.params['id'] || '0', 10);
+        const id = req.params['id'];
+
+        if (!id) {
+            res.status(400).json({ error: 'Missing connection ID' });
+            return;
+        }
 
         // Verify ownership
         const connection = await connectionManager.getConnection(req.user.id, id);
@@ -203,5 +224,3 @@ connectionsRouter.post('/:id/resume', async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to resume connection' });
     }
 });
-
-// End of Routes

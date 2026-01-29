@@ -30,7 +30,7 @@ export interface SyncEngineEvents {
 }
 
 export interface SyncEngineConfig {
-    connectionId?: number;
+    connectionId?: string;
     tableName: string;
     spreadsheetId: string;
     sheetName: string;
@@ -53,7 +53,7 @@ export class SyncEngine extends EventEmitter {
     private syncInterval: ReturnType<typeof setInterval> | null = null;
     private headers: string[] = [];
     private tableName: string;
-    private connectionId?: number;
+    private connectionId?: string;
 
     constructor(config?: SyncEngineConfig) {
         super();

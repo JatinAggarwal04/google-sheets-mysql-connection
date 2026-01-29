@@ -20,7 +20,7 @@ export default function Dashboard() {
     const [mysqlData, setMysqlData] = useState<{ columns: string[]; rows: any[] } | null>(null);
 
     // WebSocket for real-time updates
-    const { isConnected } = useWebSocket({
+    const { isConnected: rawIsConnected } = useWebSocket({
         onMessage: (msg: WebSocketMessage) => {
             addLogEntry(msg.type, JSON.stringify(msg.data || {}));
 
@@ -30,6 +30,18 @@ export default function Dashboard() {
             }
         },
     });
+
+    // Debounced connection status to prevent flickering
+    const [isConnected, setIsConnected] = useState(rawIsConnected);
+    useEffect(() => {
+        if (rawIsConnected) {
+            setIsConnected(true);
+        } else {
+            // Delay showing disconnected state to avoid flicker on quick reconnects
+            const timer = setTimeout(() => setIsConnected(false), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [rawIsConnected]);
 
     const addLogEntry = (type: string, message: string) => {
         setEventLog((prev) => [
@@ -86,19 +98,23 @@ export default function Dashboard() {
 
     const loadSheetsData = async () => {
         try {
+            setSheetsData(null); // Reset while loading
             const data = await api.fetchSheetsData();
             setSheetsData(data);
         } catch (err) {
             console.error('Failed to load sheets data:', err);
+            setSheetsData({ headers: [], rows: [] }); // Empty on error
         }
     };
 
     const loadMySQLData = async () => {
         try {
+            setMysqlData(null); // Reset while loading
             const data = await api.fetchMySQLData();
             setMysqlData(data);
         } catch (err) {
             console.error('Failed to load MySQL data:', err);
+            setMysqlData({ columns: [], rows: [] }); // Empty on error
         }
     };
 
@@ -116,7 +132,8 @@ export default function Dashboard() {
         if (!confirm('Are you sure you want to delete this connection?')) return;
 
         try {
-            await api.deleteConnection(currentConnection.id);
+            // ID is string now
+            await api.deleteConnection(currentConnection.id as any);
             setCurrentConnection(null);
             await loadConnections();
         } catch (err: any) {
@@ -162,7 +179,8 @@ export default function Dashboard() {
                             <select
                                 value={currentConnection?.id || ''}
                                 onChange={(e) => {
-                                    const conn = connections.find((c) => c.id === Number(e.target.value));
+                                    // Use string value directly (UUID)
+                                    const conn = connections.find((c) => c.id === e.target.value);
                                     setCurrentConnection(conn || null);
                                 }}
                                 className="connection-dropdown"
@@ -376,7 +394,10 @@ export default function Dashboard() {
                                     {!sheetsData ? (
                                         <div className="loading">Loading data...</div>
                                     ) : sheetsData.rows.length === 0 ? (
-                                        <div className="table-empty">No data available</div>
+                                        <div className="table-empty">
+                                            <p>No sheet data found.</p>
+                                            <small className="text-muted">No sheet added or sheet is empty.</small>
+                                        </div>
                                     ) : (
                                         <table className="data-table">
                                             <thead>
@@ -416,7 +437,10 @@ export default function Dashboard() {
                                     {!mysqlData ? (
                                         <div className="loading">Loading data...</div>
                                     ) : mysqlData.rows.length === 0 ? (
-                                        <div className="table-empty">No data available</div>
+                                        <div className="table-empty">
+                                            <p>No MySQL data found.</p>
+                                            <small className="text-muted">Table is empty or not yet synced.</small>
+                                        </div>
                                     ) : (
                                         <table className="data-table">
                                             <thead>

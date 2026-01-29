@@ -48,6 +48,12 @@ const configSchema = z.object({
 
     // Logging
     logLevel: z.enum(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).default('info'),
+
+    // Supabase
+    supabase: z.object({
+        url: z.string().url(),
+        serviceKey: z.string().optional(), // Make optional to prevent crash if not set immediately
+    }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -105,6 +111,10 @@ function loadConfig(): Config {
             maxRequests: parseInt(env['RATE_LIMIT_MAX_REQUESTS'] ?? '100', 10),
         },
         logLevel: env['LOG_LEVEL'] ?? 'info',
+        supabase: {
+            url: env['SUPABASE_URL'] ?? env['VITE_SUPABASE_URL'] ?? '',
+            serviceKey: env['SUPABASE_SERVICE_KEY'] ?? env['VITE_SUPABASE_SERVICE_KEY'] ?? '',
+        },
     };
 
     return configSchema.parse(rawConfig);

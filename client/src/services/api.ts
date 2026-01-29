@@ -40,10 +40,10 @@ export async function createConnection(data: {
         headers,
         body: JSON.stringify(data),
     });
-    return handleResponse<{ success: boolean; id: number }>(response);
+    return handleResponse<{ success: boolean; id: string }>(response);
 }
 
-export async function deleteConnection(id: number) {
+export async function deleteConnection(id: string) {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/connections/${id}`, {
         method: 'DELETE',
@@ -52,7 +52,7 @@ export async function deleteConnection(id: number) {
     return handleResponse<{ success: boolean }>(response);
 }
 
-export async function pauseConnection(id: number) {
+export async function pauseConnection(id: string) {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/connections/${id}/pause`, {
         method: 'POST',
@@ -61,7 +61,7 @@ export async function pauseConnection(id: number) {
     return handleResponse<{ success: boolean }>(response);
 }
 
-export async function resumeConnection(id: number) {
+export async function resumeConnection(id: string) {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/connections/${id}/resume`, {
         method: 'POST',

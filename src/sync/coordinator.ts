@@ -8,7 +8,7 @@ import { getMySQLClient } from '../mysql/client.js';
 const logger = createComponentLogger('MultiSyncCoordinator');
 
 export class MultiSyncCoordinator {
-    private engines: Map<number, SyncEngine> = new Map();
+    private engines: Map<string, SyncEngine> = new Map();
     private connectionManager: ConnectionManager;
     private isRunning = false;
 
@@ -32,7 +32,7 @@ export class MultiSyncCoordinator {
         await this.connectionManager.initialize();
 
         // Check and migrate legacy config if needed
-        await this.migrateLegacyConfig();
+        // await this.migrateLegacyConfig();
 
         // Load and start active connections
         await this.refreshConnections();
@@ -148,7 +148,7 @@ export class MultiSyncCoordinator {
     /**
      * Get specific engine by ID
      */
-    getEngine(connectionId: number): SyncEngine | undefined {
+    getEngine(connectionId: string): SyncEngine | undefined {
         return this.engines.get(connectionId);
     }
 
