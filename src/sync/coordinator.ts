@@ -24,6 +24,10 @@ export class MultiSyncCoordinator {
 
         logger.info('Starting MultiSyncCoordinator');
 
+        // Connect to MySQL first
+        const mysqlClient = getMySQLClient();
+        await mysqlClient.connect();
+
         // Ensure metadata table exists
         await this.connectionManager.initialize();
 

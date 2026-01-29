@@ -33,10 +33,12 @@ export function createApp(): Express {
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", "'unsafe-inline'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://challenges.cloudflare.com"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
                 fontSrc: ["'self'", "https://fonts.gstatic.com"],
-                connectSrc: ["'self'", "ws:", "wss:"],
+                connectSrc: ["'self'", "ws:", "wss:", "https://*.supabase.co", "https://challenges.cloudflare.com"],
+                frameSrc: ["https://challenges.cloudflare.com"],
+                imgSrc: ["'self'", "data:", "https:"],
             },
         },
     }));
@@ -70,9 +72,9 @@ export function createApp(): Express {
         next();
     });
 
-    // Static files for dashboard
-    const publicPath = path.resolve(__dirname, '../../public');
-    app.use(express.static(publicPath));
+    // Static files for dashboard - serve built React app
+    const clientPath = path.resolve(__dirname, '../../client/dist');
+    app.use(express.static(clientPath));
 
     // API routes
     app.use('/api/webhook', webhookRouter);
@@ -82,12 +84,16 @@ export function createApp(): Express {
     app.use('/api/connections', connectionsRouter);
     app.use('/api/secrets', secretsRouter);
 
-    // Serve dashboard for root
-    app.get('/', (req: Request, res: Response) => {
-        res.sendFile(path.join(publicPath, 'index.html'));
+    // SPA fallback - serve index.html for all non-API routes (React Router)
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+        // Don't serve index.html for API routes
+        if (req.path.startsWith('/api/') || req.path.startsWith('/ws')) {
+            return next();
+        }
+        res.sendFile(path.join(clientPath, 'index.html'));
     });
 
-    // 404 handler
+    // 404 handler (only for API routes now)
     app.use((req: Request, res: Response) => {
         res.status(404).json({
             error: {
