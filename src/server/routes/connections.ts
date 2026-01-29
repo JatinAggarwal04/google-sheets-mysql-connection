@@ -5,13 +5,7 @@ import { getSheetsClient } from '../../sheets/client.js';
 import { createComponentLogger } from '../../utils/logger.js';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
-import multer from 'multer';
 
-// Configure multer for memory storage
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
-});
 
 const logger = createComponentLogger('ConnectionsRoute');
 export const connectionsRouter = Router();
@@ -210,51 +204,4 @@ connectionsRouter.post('/:id/resume', async (req: Request, res: Response) => {
     }
 });
 
-
-/**
- * POST /api/connections/import
- * Import connection from file
- */
-connectionsRouter.post('/import', upload.single('file'), async (req: Request, res: Response) => {
-    try {
-        if (!req.user) return;
-        if (!req.file) {
-            res.status(400).json({ error: 'No file uploaded' });
-            return;
-        }
-
-        const name = req.body.name as string;
-        if (!name) {
-            res.status(400).json({ error: 'Connection name required' });
-            return;
-        }
-
-        const connectionId = await connectionManager.importFromFile(
-            req.user.id,
-            {
-                buffer: req.file.buffer,
-                fileName: req.file.originalname,
-                mimeType: req.file.mimetype
-            },
-            {
-                name,
-                sheetName: req.body.sheetName
-            }
-        );
-
-        // Refresh coordinator to include new (paused) connection
-        await coordinator.refreshConnections();
-
-        res.status(201).json({
-            success: true,
-            id: connectionId,
-            message: 'File imported successfully'
-        });
-    } catch (error) {
-        logger.error('Failed to import file', { error });
-        res.status(500).json({
-            error: 'Failed to import file',
-            details: error instanceof Error ? error.message : String(error)
-        });
-    }
-});
+// End of Routes
