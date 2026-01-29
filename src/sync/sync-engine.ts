@@ -4,6 +4,7 @@ import { getChangeQueue, ChangeQueue } from './change-queue.js';
 import { getConflictResolver, ConflictResolver } from './conflict-resolver.js';
 import { getMySQLClient, MySQLClient } from '../mysql/client.js';
 import { getCDCListener, CDCListener } from '../mysql/cdc-listener.js';
+import { getPollingListener, MySQLPollingListener } from '../mysql/polling-listener.js';
 import { getSheetsClient, SheetsClient } from '../sheets/client.js';
 import { createSchemaManager, SchemaManager } from '../mysql/schema-manager.js';
 import { createSchemaInferrer } from '../sheets/schema-inferrer.js';
@@ -34,6 +35,7 @@ export class SyncEngine extends EventEmitter {
     private mysqlClient: MySQLClient;
     private sheetsClient: SheetsClient;
     private cdcListener: CDCListener;
+    private pollingListener: MySQLPollingListener;
     private changeQueue: ChangeQueue;
     private conflictResolver: ConflictResolver;
     private schemaManager: SchemaManager;
@@ -49,6 +51,7 @@ export class SyncEngine extends EventEmitter {
         this.mysqlClient = getMySQLClient();
         this.sheetsClient = getSheetsClient();
         this.cdcListener = getCDCListener();
+        this.pollingListener = getPollingListener();
         this.changeQueue = getChangeQueue();
         this.conflictResolver = getConflictResolver();
 
@@ -85,10 +88,19 @@ export class SyncEngine extends EventEmitter {
                 await this.cdcListener.start();
                 logger.info('CDC listener started - bidirectional sync enabled');
             } catch (cdcError) {
+                const cause = cdcError instanceof Error && 'cause' in cdcError ? (cdcError as any).cause : undefined;
                 logger.warn('CDC listener failed to start - running in one-way mode (Sheet → MySQL only)', {
                     error: cdcError instanceof Error ? cdcError.message : String(cdcError),
+                    cause: cause instanceof Error ? cause.message : cause,
+                    stack: cdcError instanceof Error ? cdcError.stack : undefined
                 });
-                // Continue without CDC - Sheet changes will still sync to MySQL
+
+                // Fallback to polling
+                logger.info('Falling back to polling listener');
+                this.pollingListener.on('change', (event: ChangeEvent) => {
+                    this.handleMySQLChange(event);
+                });
+                await this.pollingListener.start();
             }
 
             // Start processing loop
