@@ -166,7 +166,7 @@ class SyncDashboard {
       return;
     }
 
-    const displayHeaders = this.sheetsData.headers.filter(h => !h.startsWith('_') || h === '_rowNumber');
+    const displayHeaders = this.sheetsData.headers.filter(h => !h.startsWith('_'));
     
     let html = `
       <table class="data-table">

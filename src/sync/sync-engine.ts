@@ -162,7 +162,7 @@ export class SyncEngine extends EventEmitter {
                     await this.mysqlClient.updateRow(
                         this.tableName,
                         existing.id as number,
-                        { ...row.data, _row_number: row.rowNumber },
+                        { ...this.sanitizeData(row.data), _row_number: row.rowNumber },
                         'id',
                         'INITIAL_SYNC'
                     );
@@ -170,7 +170,7 @@ export class SyncEngine extends EventEmitter {
                     // Insert new row
                     await this.mysqlClient.insertRow(
                         this.tableName,
-                        { ...row.data, _row_number: row.rowNumber },
+                        { ...this.sanitizeData(row.data), _row_number: row.rowNumber },
                         'INITIAL_SYNC'
                     );
                 }
@@ -372,11 +372,29 @@ export class SyncEngine extends EventEmitter {
 
         switch (event.operation) {
             case 'INSERT':
-                await this.mysqlClient.insertRow(
+                const insertId = await this.mysqlClient.insertRow(
                     this.tableName,
-                    { ...event.data, _row_number: rowNumber },
+                    { ...this.sanitizeData(event.data), _row_number: rowNumber },
                     'SHEET_TO_MYSQL'
                 );
+
+                // Fetch the fully created row (to get ID and any default values like status)
+                const newRow = await this.mysqlClient.getRowById(this.tableName, insertId);
+
+                if (newRow) {
+                    // Update Sheet with the complete data from MySQL (ID, defaults, etc.)
+                    // remove internal fields
+                    const syncData: Record<string, unknown> = { ...newRow };
+                    delete syncData._row_number;
+                    delete syncData._sync_source;
+                    delete syncData._sync_timestamp;
+                    delete syncData._created_at;
+                    delete syncData._updated_at;
+
+                    // Write back to Sheet
+                    await this.sheetsClient.updateRow(rowNumber, syncData, this.headers);
+                    logger.info('Wrote back generated MySQL data (ID/defaults) to Sheet', { rowNumber, insertId });
+                }
                 break;
 
             case 'UPDATE':
@@ -390,7 +408,7 @@ export class SyncEngine extends EventEmitter {
                     await this.mysqlClient.updateRow(
                         this.tableName,
                         existing[0].id,
-                        event.data,
+                        this.sanitizeData(event.data),
                         'id',
                         'SHEET_TO_MYSQL'
                     );
@@ -398,7 +416,7 @@ export class SyncEngine extends EventEmitter {
                     // Row doesn't exist, insert it
                     await this.mysqlClient.insertRow(
                         this.tableName,
-                        { ...event.data, _row_number: rowNumber },
+                        { ...this.sanitizeData(event.data), _row_number: rowNumber },
                         'SHEET_TO_MYSQL'
                     );
                 }
@@ -498,6 +516,17 @@ export class SyncEngine extends EventEmitter {
         }
 
         this.emit('status:update', status);
+    }
+
+    /**
+     * Sanitize data before sending to MySQL
+     */
+    private sanitizeData(data: Record<string, unknown>): Record<string, unknown> {
+        const clean = { ...data };
+        if (clean.id === '' || clean.id === null) {
+            delete clean.id;
+        }
+        return clean;
     }
 
     /**
