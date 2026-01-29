@@ -83,7 +83,7 @@ export class MultiSyncCoordinator {
         // We'll store empty mapping and let SyncEngine infer it or UI update it.
         // Actually SyncEngine implementation infers schema from Sheet headers.
 
-        await this.connectionManager.createConnection({
+        await this.connectionManager.createConnection('system', {
             name: 'Default Connection',
             spreadsheetId: config.sheets.spreadsheetId,
             sheetName: config.sheets.sheetName,

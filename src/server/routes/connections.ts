@@ -4,6 +4,7 @@ import { getCoordinator } from '../../sync/coordinator.js';
 import { getSheetsClient } from '../../sheets/client.js';
 import { createComponentLogger } from '../../utils/logger.js';
 import { z } from 'zod';
+import { requireAuth } from '../middleware/auth.js';
 
 const logger = createComponentLogger('ConnectionsRoute');
 export const connectionsRouter = Router();
@@ -18,9 +19,10 @@ const createConnectionSchema = z.object({
     sheetName: z.string().min(1),
     mysqlTableName: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
     columnMapping: z.record(z.string()), // user -> system (sheet header -> type? or just mapping)
-    // Actually currently we infer types. Mapping might be explicitly header -> type?
-    // Let's assume input matches ConnectionConfig.
 });
+
+// Protect all routes
+connectionsRouter.use(requireAuth);
 
 /**
  * GET /api/connections
@@ -28,7 +30,9 @@ const createConnectionSchema = z.object({
  */
 connectionsRouter.get('/', async (req: Request, res: Response) => {
     try {
-        const connections = await connectionManager.getAllConnections();
+        if (!req.user) return; // Should be handled by middleware
+
+        const connections = await connectionManager.getAllConnections(req.user.id);
 
         // Enrich with runtime status
         const statuses = coordinator.getEnginesStatus();
@@ -52,8 +56,9 @@ connectionsRouter.get('/', async (req: Request, res: Response) => {
  */
 connectionsRouter.get('/:id', async (req: Request, res: Response) => {
     try {
+        if (!req.user) return;
         const id = parseInt(req.params['id'] || '0', 10);
-        const connection = await connectionManager.getConnection(id);
+        const connection = await connectionManager.getConnection(req.user.id, id);
 
         if (!connection) {
             res.status(404).json({ error: 'Connection not found' });
@@ -103,15 +108,11 @@ connectionsRouter.post('/preview', async (req: Request, res: Response) => {
  */
 connectionsRouter.post('/', async (req: Request, res: Response) => {
     try {
+        if (!req.user) return;
         const body = createConnectionSchema.parse(req.body);
 
-        // Check if table name already exists?
-        // SchemaManager will handle ensuring table exists.
-        // But if we want to prevent overwriting existing tables used by other connections?
-        // Unique constrain on mysql_table_name in DB? Unlikely enforced yet.
-
         // Create in DB
-        const id = await connectionManager.createConnection({
+        const id = await connectionManager.createConnection(req.user.id, {
             ...body,
             status: 'active'
         });
@@ -141,15 +142,10 @@ connectionsRouter.post('/', async (req: Request, res: Response) => {
  */
 connectionsRouter.delete('/:id', async (req: Request, res: Response) => {
     try {
+        if (!req.user) return;
         const id = parseInt(req.params['id'] || '0', 10);
 
-        // Stop engine is handled by refreshConnections after status change/deletion?
-        // No, if we delete row, refreshConnections needs to know it WAS there.
-        // refreshConnections compares 'activeConnections' from DB with 'engines' map.
-        // If ID is in map but not in DB active list, it STOPS it.
-        // So deleting from DB is sufficient.
-
-        await connectionManager.deleteConnection(id);
+        await connectionManager.deleteConnection(req.user.id, id);
         await coordinator.refreshConnections();
 
         res.json({ success: true, message: 'Connection deleted' });
@@ -164,7 +160,16 @@ connectionsRouter.delete('/:id', async (req: Request, res: Response) => {
  */
 connectionsRouter.post('/:id/pause', async (req: Request, res: Response) => {
     try {
+        if (!req.user) return;
         const id = parseInt(req.params['id'] || '0', 10);
+
+        // Verify ownership
+        const connection = await connectionManager.getConnection(req.user.id, id);
+        if (!connection) {
+            res.status(404).json({ error: 'Connection not found' });
+            return;
+        }
+
         await connectionManager.updateStatus(id, 'paused');
         await coordinator.refreshConnections();
         res.json({ success: true, message: 'Connection paused' });
@@ -179,7 +184,16 @@ connectionsRouter.post('/:id/pause', async (req: Request, res: Response) => {
  */
 connectionsRouter.post('/:id/resume', async (req: Request, res: Response) => {
     try {
+        if (!req.user) return;
         const id = parseInt(req.params['id'] || '0', 10);
+
+        // Verify ownership
+        const connection = await connectionManager.getConnection(req.user.id, id);
+        if (!connection) {
+            res.status(404).json({ error: 'Connection not found' });
+            return;
+        }
+
         await connectionManager.updateStatus(id, 'active');
         await coordinator.refreshConnections();
         res.json({ success: true, message: 'Connection resumed' });

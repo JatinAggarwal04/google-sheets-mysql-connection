@@ -12,6 +12,7 @@ import { getConfig } from '../config/index.js';
 import { createComponentLogger } from '../utils/logger.js';
 import { SyncError } from '../utils/errors.js';
 import { RowDataPacket } from 'mysql2/promise';
+import { getConnectionManager } from '../mysql/connection-manager.js';
 
 const logger = createComponentLogger('SyncEngine');
 
@@ -52,6 +53,7 @@ export class SyncEngine extends EventEmitter {
     private syncInterval: ReturnType<typeof setInterval> | null = null;
     private headers: string[] = [];
     private tableName: string;
+    private connectionId?: number;
 
     constructor(config?: SyncEngineConfig) {
         super();
@@ -64,6 +66,9 @@ export class SyncEngine extends EventEmitter {
         } : undefined;
 
         this.tableName = config?.tableName ?? globalConfig.sync.tableName;
+        if (config?.connectionId !== undefined) {
+            this.connectionId = config.connectionId;
+        }
 
         this.mysqlClient = getMySQLClient();
         this.sheetsClient = getSheetsClient(sheetConfig);
@@ -87,6 +92,51 @@ export class SyncEngine extends EventEmitter {
         logger.info('Starting sync engine');
 
         try {
+            // Load dynamic credentials if this is a managed connection
+            // Load dynamic credentials if this is a managed connection
+            if (this.connectionId) {
+                const connectionManager = getConnectionManager();
+                // We use internal get because we trust the ID passed to the engine (or we need to pass userId too?)
+                // SyncEngine is usually running in a context where it's trusted or spawned by coordinator.
+                // But wait, SyncEngineConfig has connectionId.
+                const connection = await connectionManager.getConnectionInternal(this.connectionId);
+
+                if (connection) {
+                    // Load Google Credentials
+                    let sheetsCredentials;
+                    if (connection.googleSecretId) {
+                        try {
+                            const secretValue = await connectionManager.getSecretValue(connection.userId, connection.googleSecretId);
+                            if (secretValue) {
+                                sheetsCredentials = JSON.parse(secretValue);
+                                // Re-initialize SheetsClient with new credentials
+                                this.sheetsClient = getSheetsClient({
+                                    spreadsheetId: this.sheetsClient.getSpreadsheetId(),
+                                    sheetName: this.sheetsClient.getSheetName(),
+                                    credentials: sheetsCredentials
+                                });
+                            }
+                        } catch (err) {
+                            logger.error('Failed to load Google credentials', { error: err });
+                        }
+                    }
+
+                    // Load MySQL Credentials
+                    if (connection.mysqlSecretId) {
+                        try {
+                            const secretValue = await connectionManager.getSecretValue(connection.userId, connection.mysqlSecretId);
+                            if (secretValue) {
+                                const mysqlConfig = JSON.parse(secretValue);
+                                // Re-initialize MySQLClient
+                                this.mysqlClient = getMySQLClient(mysqlConfig);
+                            }
+                        } catch (err) {
+                            logger.error('Failed to load MySQL credentials', { error: err });
+                        }
+                    }
+                }
+            }
+
             // Initialize connections
             await this.mysqlClient.connect();
             await this.sheetsClient.initialize();

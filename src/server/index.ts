@@ -12,6 +12,7 @@ import { syncRouter } from './routes/sync.js';
 import { healthRouter } from './routes/health.js';
 import { dataRouter } from './routes/data.js';
 import { connectionsRouter } from './routes/connections.js';
+import { secretsRouter } from './routes/secrets.js';
 import { WebSocketServer } from './websocket.js';
 import { getCoordinator } from '../sync/coordinator.js';
 
@@ -79,6 +80,7 @@ export function createApp(): Express {
     app.use('/api/health', healthRouter);
     app.use('/api/data', dataRouter);
     app.use('/api/connections', connectionsRouter);
+    app.use('/api/secrets', secretsRouter);
 
     // Serve dashboard for root
     app.get('/', (req: Request, res: Response) => {

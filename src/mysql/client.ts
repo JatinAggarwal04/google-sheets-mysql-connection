@@ -12,24 +12,53 @@ export class MySQLClient {
     private pool: Pool | null = null;
     private isConnected = false;
 
+    constructor(config?: {
+        host?: string;
+        user?: string;
+        password?: string;
+        database?: string;
+        port?: number;
+    }) {
+        if (config) {
+            this.config = config;
+        } else {
+            const globalConfig = getConfig();
+            this.config = {
+                host: globalConfig.mysql.host,
+                user: globalConfig.mysql.user,
+                password: globalConfig.mysql.password,
+                database: globalConfig.mysql.database,
+                port: globalConfig.mysql.port,
+            };
+        }
+    }
+
+    private config: {
+        host?: string;
+        user?: string;
+        password?: string;
+        database?: string;
+        port?: number;
+    };
+
     /**
      * Initialize the connection pool
      */
     async connect(): Promise<void> {
         if (this.pool) {
-            logger.warn('MySQL pool already initialized');
+            // Check if existing pool matches new config?
+            // For now, assume if pool exists, we are good.
+            // In multi-tenant, we might create new instances of MySQLClient per connection.
             return;
         }
 
-        const config = getConfig();
-
         try {
             this.pool = mysql.createPool({
-                host: config.mysql.host,
-                port: config.mysql.port,
-                user: config.mysql.user,
-                password: config.mysql.password,
-                database: config.mysql.database,
+                host: this.config.host || 'localhost',
+                port: this.config.port || 3306,
+                user: this.config.user || 'root',
+                password: this.config.password || '',
+                database: this.config.database || '',
                 waitForConnections: true,
                 connectionLimit: 10,
                 maxIdle: 5,
@@ -46,15 +75,15 @@ export class MySQLClient {
 
             this.isConnected = true;
             logger.info('MySQL connection pool initialized', {
-                host: config.mysql.host,
-                database: config.mysql.database,
+                host: this.config.host,
+                database: this.config.database,
             });
         } catch (error) {
             throw new DatabaseError('Failed to initialize MySQL connection pool', {
                 cause: error instanceof Error ? error : new Error(String(error)),
                 context: {
-                    host: config.mysql.host,
-                    database: config.mysql.database,
+                    host: this.config.host,
+                    database: this.config.database,
                 },
             });
         }
@@ -271,7 +300,7 @@ export class MySQLClient {
      * Get database name
      */
     getDatabaseName(): string {
-        return getConfig().mysql.database;
+        return this.config.database || getConfig().mysql.database;
     }
 
     /**
@@ -293,7 +322,16 @@ let mysqlClientInstance: MySQLClient | null = null;
 /**
  * Get the MySQL client singleton
  */
-export function getMySQLClient(): MySQLClient {
+export function getMySQLClient(config?: {
+    host?: string;
+    user?: string;
+    password?: string;
+    database?: string;
+    port?: number;
+}): MySQLClient {
+    if (config) {
+        return new MySQLClient(config);
+    }
     if (!mysqlClientInstance) {
         mysqlClientInstance = new MySQLClient();
     }

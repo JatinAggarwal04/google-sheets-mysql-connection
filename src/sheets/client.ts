@@ -40,11 +40,14 @@ export class SheetsClient {
     private lastResetTime = Date.now();
     private readonly MAX_REQUESTS_PER_MINUTE = 60;
 
-    constructor(config?: { spreadsheetId: string; sheetName: string }) {
+    constructor(config?: { spreadsheetId: string; sheetName: string; credentials?: any }) {
         const globalConfig = getConfig();
         this.spreadsheetId = config?.spreadsheetId ?? globalConfig.sheets.spreadsheetId;
         this.sheetName = config?.sheetName ?? globalConfig.sheets.sheetName;
+        this.credentials = config?.credentials;
     }
+
+    private credentials?: any;
 
     /**
      * Initialize the Sheets API client with service account credentials
@@ -59,9 +62,12 @@ export class SheetsClient {
         try {
             let auth;
 
-            if (config.sheets.credentials) {
+            // Priority: Dynamic credentials -> Global config -> Error
+            const credentialsToUse = this.credentials || config.sheets.credentials;
+
+            if (credentialsToUse) {
                 // Use service account credentials
-                const credentials = config.sheets.credentials as {
+                const credentials = credentialsToUse as {
                     client_email: string;
                     private_key: string;
                 };
@@ -75,7 +81,7 @@ export class SheetsClient {
                 });
             } else {
                 throw new SheetsApiError(
-                    'No Google credentials configured. Set GOOGLE_PRIVATE_KEY_PATH in environment.'
+                    'No Google credentials configured. Set GOOGLE_PRIVATE_KEY_PATH in environment or provide credentials.'
                 );
             }
 
@@ -91,6 +97,14 @@ export class SheetsClient {
                 cause: error instanceof Error ? error : new Error(String(error)),
             });
         }
+    }
+
+    getSpreadsheetId(): string {
+        return this.spreadsheetId;
+    }
+
+    getSheetName(): string {
+        return this.sheetName;
     }
 
     /**
@@ -475,7 +489,7 @@ let sheetsClientInstance: SheetsClient | null = null;
 /**
  * Get the Sheets client singleton
  */
-export function getSheetsClient(config?: { spreadsheetId: string; sheetName: string }): SheetsClient {
+export function getSheetsClient(config?: { spreadsheetId: string; sheetName: string; credentials?: any }): SheetsClient {
     if (config) {
         return new SheetsClient(config);
     }
