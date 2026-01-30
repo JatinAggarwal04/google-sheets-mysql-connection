@@ -2,7 +2,7 @@
 // Redis Configuration
 // ===========================================
 
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { getEnv } from './env.js';
 import { logger } from '../lib/logger.js';
 
