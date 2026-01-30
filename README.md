@@ -7,7 +7,7 @@
 
 SyncHub is a production-grade, multi-tenant SaaS platform engineered for reliable, bidirectional synchronization between Google Sheets and MySQL databases. It solves the "data silo" problem by treating Sheets as a dynamic UI for your database and your database as a robust backend for your Sheets.
 
-![Dashboard Preview](https://drive.google.com/file/d/1nPnwdhZZs_UTIvg5v8AJ7WFHyy7Z1k3R/view?usp=sharing)
+![Dashboard Preview](https://drive.google.com/uc?export=view&id=1nPnwdhZZs_UTIvg5v8AJ7WFHyy7Z1k3R)
 
 ## ✨ Key Features
 
@@ -129,7 +129,7 @@ The synchronization engine is the core of SyncHub. Here is how it handles data c
 
 ### Data Table View
 Manage your synced data visually with supported CRUD operations.
-![Table Data](file:///Users/jatinaggarwal/.gemini/antigravity/brain/9ba9ca90-f424-43cc-8e14-89de8740ff90/table_data_upper_1769719536695.png)
+![Table Data](https://drive.google.com/uc?export=view&id=1pTq9O0H3OGlemLW_5r4-GHo6CFyJjzFW)
 
 ## 🔐 Security & Compliance
 
