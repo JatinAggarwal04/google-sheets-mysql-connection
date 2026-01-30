@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { DataTableView } from '../components/DataTableView';
+import { ConfirmModal } from '../components/ConfirmModal';
 import {
     ArrowLeft,
     Play,
@@ -73,7 +74,10 @@ export function IntegrationDetailPage() {
     const [mysqlData, setMysqlData] = useState<{ columns: string[]; rows: Record<string, unknown>[] }>({ columns: [], rows: [] });
     const [loadingSheetData, setLoadingSheetData] = useState(false);
     const [loadingMysqlData, setLoadingMysqlData] = useState(false);
+
+    // Delete state
     const [showDeleteIntegrationConfirm, setShowDeleteIntegrationConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         loadIntegration();
@@ -225,12 +229,16 @@ export function IntegrationDetailPage() {
 
     const handleDelete = async () => {
         try {
+            setIsDeleting(true);
             await api.integrations.delete(id!);
             navigate('/dashboard');
         } catch (err) {
             setError('Failed to delete integration');
+            setIsDeleting(false); // Only reset if failed
         } finally {
-            setShowDeleteIntegrationConfirm(false);
+            if (!isDeleting) {
+                setShowDeleteIntegrationConfirm(false);
+            }
         }
     };
 
@@ -292,13 +300,15 @@ export function IntegrationDetailPage() {
         <div className="integration-detail">
             {/* Header */}
             <div className="detail-header">
-                <div className="header-left">
-                    <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
-                        <ArrowLeft size={18} />
-                        Back
-                    </button>
-                    <h1>{integration.name}</h1>
-                    {getStatusBadge(integration.status)}
+                <div className="header-top">
+                    <div className="header-left">
+                        <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
+                            <ArrowLeft size={18} />
+                            Back
+                        </button>
+                        <h1>{integration.name}</h1>
+                        {getStatusBadge(integration.status)}
+                    </div>
                 </div>
 
                 <div className="header-actions">
@@ -581,22 +591,16 @@ export function IntegrationDetailPage() {
             </div>
 
             {/* Delete Integration Confirmation Modal */}
-            {showDeleteIntegrationConfirm && (
-                <div className="delete-confirm-overlay">
-                    <div className="delete-confirm-modal">
-                        <h4>Confirm Delete Integration</h4>
-                        <p>Are you sure you want to delete this integration? This action cannot be undone.</p>
-                        <div className="delete-confirm-actions">
-                            <button className="btn btn-secondary" onClick={() => setShowDeleteIntegrationConfirm(false)}>
-                                Cancel
-                            </button>
-                            <button className="btn btn-danger" onClick={handleDelete}>
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={showDeleteIntegrationConfirm}
+                title="Delete Integration"
+                message="Are you sure you want to delete this integration? This action cannot be undone."
+                confirmLabel="Delete"
+                isDestructive={true}
+                isLoading={isDeleting}
+                onConfirm={handleDelete}
+                onClose={() => !isDeleting && setShowDeleteIntegrationConfirm(false)}
+            />
         </div>
     );
 }
