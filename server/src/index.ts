@@ -26,6 +26,9 @@ loadEnv();
 const app = express();
 const env = getEnv();
 
+// Trust proxy for external load balancers (Render/Heroku/Railway)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
