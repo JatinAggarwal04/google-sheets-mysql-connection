@@ -174,10 +174,6 @@ export function ConnectionsPage() {
         }
     };
 
-    const handleDeleteMysqlConnection = async (id: string) => { // Kept for reference but unused in new flow
-        initiateDeleteMysql(id);
-    };
-
     const handleCreateMysqlConnection = async (e: React.FormEvent) => {
         e.preventDefault();
 
