@@ -7,7 +7,6 @@ import { useAuthStore } from '../stores/auth.store';
 import {
     LayoutDashboard,
     Link2,
-    Settings,
     LogOut,
     Database,
     Sheet,

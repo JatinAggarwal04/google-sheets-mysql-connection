@@ -9,10 +9,8 @@ import {
     Database,
     Plus,
     Trash2,
-    RefreshCw,
     CheckCircle,
     AlertCircle,
-    ExternalLink,
 } from 'lucide-react';
 import './Connections.css';
 

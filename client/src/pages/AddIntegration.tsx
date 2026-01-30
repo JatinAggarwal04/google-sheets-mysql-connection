@@ -79,7 +79,7 @@ export function AddIntegrationPage() {
     const [selectedSpreadsheet, setSelectedSpreadsheet] = useState<string | null>(null);
     const [sheets, setSheets] = useState<SheetInfo[]>([]);
     const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
-    const [sheetHeaders, setSheetHeaders] = useState<string[]>([]);
+    // const [sheetHeaders, setSheetHeaders] = useState<string[]>([]);
     const [mysqlTables, setMysqlTables] = useState<string[]>([]);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
     const [createNewTable, setCreateNewTable] = useState(false);
@@ -92,7 +92,7 @@ export function AddIntegrationPage() {
     // Step 5: Review
     const [integrationName, setIntegrationName] = useState('');
 
-    const steps: { key: Step; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+    const steps: { key: Step; label: string; icon: any }[] = [
         { key: 'google', label: 'Google Account', icon: Sheet },
         { key: 'mysql', label: 'MySQL Database', icon: Database },
         { key: 'sheet', label: 'Select Sheet', icon: Link2 },
@@ -207,7 +207,7 @@ export function AddIntegrationPage() {
         try {
             setLoading(true);
             const data = await api.google.getSheetData(selectedGoogleConnection, selectedSpreadsheet, selectedSheet);
-            setSheetHeaders(data.headers);
+            // setSheetHeaders(data.headers);
 
             // Auto-generate initial mappings
             const initialMappings: ColumnMapping[] = data.headers.map((header, index) => ({
