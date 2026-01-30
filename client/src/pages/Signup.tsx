@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { Sheet, Database, Mail, Lock, User, ArrowRight } from 'lucide-react';
 import './Auth.css';
 
@@ -14,6 +15,7 @@ export function SignupPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [validationError, setValidationError] = useState('');
+    const [captchaToken, setCaptchaToken] = useState('');
     const { signup, loginWithGoogle, isLoading, error, clearError } = useAuthStore();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +34,7 @@ export function SignupPage() {
         }
 
         try {
-            await signup(email, password, name);
+            await signup(email, password, name, captchaToken);
         } catch {
             // Error is handled by store
         }
@@ -101,7 +103,7 @@ export function SignupPage() {
                             onClick={handleGoogleSignup}
                             disabled={isLoading}
                         >
-                            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                            <svg style={{ width: '20px', height: '20px', marginRight: '12px' }} viewBox="0 0 24 24">
                                 <path
                                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                                     fill="#4285F4"
@@ -192,10 +194,20 @@ export function SignupPage() {
                                 </div>
                             </div>
 
+                            <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                                <Turnstile
+                                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => setCaptchaToken(token)}
+                                    onError={() => setCaptchaToken('')}
+                                    onExpire={() => setCaptchaToken('')}
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+
                             <button
                                 type="submit"
                                 className="btn btn-primary btn-lg w-full"
-                                disabled={isLoading}
+                                disabled={isLoading || !captchaToken}
                             >
                                 {isLoading ? (
                                     <div className="spinner" style={{ width: 20, height: 20 }} />

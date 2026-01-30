@@ -24,9 +24,9 @@ interface AuthState {
     error: string | null;
 
     initialize: () => Promise<void>;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, captchaToken?: string) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
-    signup: (email: string, password: string, name?: string) => Promise<void>;
+    signup: (email: string, password: string, name?: string, captchaToken?: string) => Promise<void>;
     logout: () => Promise<void>;
     clearError: () => void;
 }
@@ -78,13 +78,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    login: async (email: string, password: string) => {
+    login: async (email: string, password: string, captchaToken?: string) => {
         set({ isLoading: true, error: null });
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
+                options: {
+                    captchaToken,
+                },
             });
 
             if (error) throw error;
@@ -129,7 +132,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
     },
 
-    signup: async (email: string, password: string, name?: string) => {
+    signup: async (email: string, password: string, name?: string, captchaToken?: string) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -138,6 +141,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 password,
                 options: {
                     data: { name },
+                    captchaToken,
                 },
             });
 

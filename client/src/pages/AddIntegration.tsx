@@ -224,11 +224,12 @@ export function AddIntegrationPage() {
         }
     };
 
-    const loadMysqlTables = async () => {
-        if (!selectedMysqlConnection) return;
+    const loadMysqlTables = async (connectionId?: string) => {
+        const id = connectionId || selectedMysqlConnection;
+        if (!id) return;
 
         try {
-            const tables = await api.mysql.listTables(selectedMysqlConnection);
+            const tables = await api.mysql.listTables(id);
             setMysqlTables(tables);
         } catch (err) {
             console.error('Failed to load tables:', err);
@@ -252,22 +253,21 @@ export function AddIntegrationPage() {
                     setError('Please select a MySQL connection');
                     return;
                 }
-                await loadSpreadsheets();
-                await loadMysqlTables();
-                setStep('sheet');
-                break;
-
-            case 'sheet':
-                if (!selectedSpreadsheet || !selectedSheet) {
-                    setError('Please select a spreadsheet and sheet');
-                    return;
-                }
                 if (createNewTable && !newTableName.trim()) {
                     setError('Please enter a new table name');
                     return;
                 }
                 if (!createNewTable && !selectedTable) {
                     setError('Please select a target table');
+                    return;
+                }
+                await loadSpreadsheets();
+                setStep('sheet');
+                break;
+
+            case 'sheet':
+                if (!selectedSpreadsheet || !selectedSheet) {
+                    setError('Please select a spreadsheet and sheet');
                     return;
                 }
                 await loadSheetHeaders();
@@ -395,35 +395,84 @@ export function AddIntegrationPage() {
                         <p>Select an existing connection or add a new database</p>
 
                         {!showNewMysqlForm ? (
-                            <div className="connection-list">
-                                {mysqlConnections.map(conn => (
-                                    <button
-                                        key={conn.id}
-                                        className={`connection-option ${selectedMysqlConnection === conn.id ? 'selected' : ''}`}
-                                        onClick={() => setSelectedMysqlConnection(conn.id)}
-                                    >
-                                        <div className="connection-icon mysql">
-                                            <Database size={20} />
+                            <div className="connection-list-container">
+                                <div className="connection-list">
+                                    {mysqlConnections.map(conn => (
+                                        <button
+                                            key={conn.id}
+                                            className={`connection-option ${selectedMysqlConnection === conn.id ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                setSelectedMysqlConnection(conn.id);
+                                                loadMysqlTables(conn.id);
+                                            }}
+                                        >
+                                            <div className="connection-icon mysql">
+                                                <Database size={20} />
+                                            </div>
+                                            <div className="connection-info">
+                                                <span className="connection-name">{conn.name}</span>
+                                                <span className="connection-type">{conn.host}/{conn.database}</span>
+                                            </div>
+                                            {selectedMysqlConnection === conn.id && (
+                                                <Check size={20} className="connection-check" />
+                                            )}
+                                        </button>
+                                    ))}
+
+                                    <button className="connection-option add-new" onClick={() => setShowNewMysqlForm(true)}>
+                                        <div className="connection-icon">
+                                            <Plus size={20} />
                                         </div>
                                         <div className="connection-info">
-                                            <span className="connection-name">{conn.name}</span>
-                                            <span className="connection-type">{conn.host}/{conn.database}</span>
+                                            <span className="connection-name">Add New Connection</span>
+                                            <span className="connection-type">Connect to a MySQL database</span>
                                         </div>
-                                        {selectedMysqlConnection === conn.id && (
-                                            <Check size={20} className="connection-check" />
-                                        )}
                                     </button>
-                                ))}
+                                </div>
 
-                                <button className="connection-option add-new" onClick={() => setShowNewMysqlForm(true)}>
-                                    <div className="connection-icon">
-                                        <Plus size={20} />
+                                {selectedMysqlConnection && (
+                                    <div className="selection-panel" style={{ marginTop: 'var(--space-6)' }}>
+                                        <h3><Database size={18} /> Select Target Table</h3>
+
+                                        <div className="form-group">
+                                            <label className="toggle-option">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={createNewTable}
+                                                    onChange={e => setCreateNewTable(e.target.checked)}
+                                                />
+                                                <span>Create new table</span>
+                                            </label>
+                                        </div>
+
+                                        {createNewTable ? (
+                                            <div className="form-group">
+                                                <label className="form-label">New Table Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-input"
+                                                    placeholder="my_table"
+                                                    value={newTableName}
+                                                    onChange={e => setNewTableName(e.target.value)}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="form-group">
+                                                <label className="form-label">Existing Table</label>
+                                                <select
+                                                    className="form-input form-select"
+                                                    value={selectedTable || ''}
+                                                    onChange={e => setSelectedTable(e.target.value)}
+                                                >
+                                                    <option value="">Select table...</option>
+                                                    {mysqlTables.map(t => (
+                                                        <option key={t} value={t}>{t}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="connection-info">
-                                        <span className="connection-name">Add New Connection</span>
-                                        <span className="connection-type">Connect to a MySQL database</span>
-                                    </div>
-                                </button>
+                                )}
                             </div>
                         ) : (
                             <div className="mysql-form card">
@@ -515,93 +564,45 @@ export function AddIntegrationPage() {
             case 'sheet':
                 return (
                     <div className="step-content">
-                        <h2>Select Source and Target</h2>
-                        <p>Choose the Google Sheet and MySQL table to sync</p>
+                        <h2>Select Google Sheet</h2>
+                        <p>Choose the spreadsheet and sheet to sync</p>
 
-                        <div className="selection-row">
-                            <div className="selection-panel">
-                                <h3><Sheet size={18} /> Source: Google Sheet</h3>
+                        <div className="selection-panel">
+                            <h3><Sheet size={18} /> Google Sheet Selection</h3>
 
+                            <div className="form-group">
+                                <label className="form-label">Spreadsheet</label>
+                                <select
+                                    className="form-input form-select"
+                                    value={selectedSpreadsheet || ''}
+                                    onChange={e => {
+                                        setSelectedSpreadsheet(e.target.value);
+                                        setSelectedSheet(null);
+                                        if (e.target.value) loadSheets(e.target.value);
+                                    }}
+                                >
+                                    <option value="">Select spreadsheet...</option>
+                                    {spreadsheets.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {selectedSpreadsheet && (
                                 <div className="form-group">
-                                    <label className="form-label">Spreadsheet</label>
+                                    <label className="form-label">Sheet</label>
                                     <select
                                         className="form-input form-select"
-                                        value={selectedSpreadsheet || ''}
-                                        onChange={e => {
-                                            setSelectedSpreadsheet(e.target.value);
-                                            setSelectedSheet(null);
-                                            if (e.target.value) loadSheets(e.target.value);
-                                        }}
+                                        value={selectedSheet || ''}
+                                        onChange={e => setSelectedSheet(e.target.value)}
                                     >
-                                        <option value="">Select spreadsheet...</option>
-                                        {spreadsheets.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        <option value="">Select sheet...</option>
+                                        {sheets.map(s => (
+                                            <option key={s.sheetId} value={s.title}>{s.title}</option>
                                         ))}
                                     </select>
                                 </div>
-
-                                {selectedSpreadsheet && (
-                                    <div className="form-group">
-                                        <label className="form-label">Sheet</label>
-                                        <select
-                                            className="form-input form-select"
-                                            value={selectedSheet || ''}
-                                            onChange={e => setSelectedSheet(e.target.value)}
-                                        >
-                                            <option value="">Select sheet...</option>
-                                            {sheets.map(s => (
-                                                <option key={s.sheetId} value={s.title}>{s.title}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="selection-arrow">
-                                <ArrowRight size={24} />
-                            </div>
-
-                            <div className="selection-panel">
-                                <h3><Database size={18} /> Target: MySQL Table</h3>
-
-                                <div className="form-group">
-                                    <label className="toggle-option">
-                                        <input
-                                            type="checkbox"
-                                            checked={createNewTable}
-                                            onChange={e => setCreateNewTable(e.target.checked)}
-                                        />
-                                        <span>Create new table</span>
-                                    </label>
-                                </div>
-
-                                {createNewTable ? (
-                                    <div className="form-group">
-                                        <label className="form-label">New Table Name</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="my_table"
-                                            value={newTableName}
-                                            onChange={e => setNewTableName(e.target.value)}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="form-group">
-                                        <label className="form-label">Existing Table</label>
-                                        <select
-                                            className="form-input form-select"
-                                            value={selectedTable || ''}
-                                            onChange={e => setSelectedTable(e.target.value)}
-                                        >
-                                            <option value="">Select table...</option>
-                                            {mysqlTables.map(t => (
-                                                <option key={t} value={t}>{t}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
                 );

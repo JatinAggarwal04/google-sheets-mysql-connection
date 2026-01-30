@@ -9,6 +9,7 @@
         "lint": "eslint src/"
     },
     "dependencies": {
+        "@marsidev/react-turnstile": "^1.4.1",
         "@supabase/supabase-js": "^2.39.0",
         "lucide-react": "^0.303.0",
         "react": "^18.2.0",
