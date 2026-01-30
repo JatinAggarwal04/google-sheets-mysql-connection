@@ -19,7 +19,7 @@ SyncHub acts as a **smart bridge** between your Google Sheet and MySQL Database.
     *   **Sheet → MySQL**: When you add a row in the Sheet, SyncHub inserts it into MySQL.
     *   **MySQL → Sheet**: When your app updates the database, SyncHub updates the cell in the Sheet.
     
-It uses a **Diffing Engine** to compare both sides and only syncs what changed, ensuring efficiency.
+It employs a custom **Change Data Capture (CDC)** module to detect modifications. By diffing the current state against the snapshot of the previous sync, it precisely identifies created, updated, and deleted records without needing database triggers.
 
 ## ✨ Key Features
 
@@ -29,7 +29,7 @@ It uses a **Diffing Engine** to compare both sides and only syncs what changed, 
     - **AES-256-GCM** encryption for all sensitive credentials at rest.
     - **OAuth 2.0** integration for secure Google access.
 - **🏗️ Robust Architecture**:
-    - **Queue-Based Processing**: Powered by **BullMQ** & **Redis** for fault tolerance and high throughput.
+    - **Event-Driven Architecture (EDA)**: Fully asynchronous, non-blocking sync jobs powered by **BullMQ** & **Redis** to ensure high scalability.
     - **Atomic Operations**: MySQL transactions ensure data integrity.
     - **Auto-Recovery**: Automatic retries with exponential backoff for failed sync jobs (e.g., API timeouts).
     - **Constraint Protection**: Prevents deletion of active connections to maintain foreign key integrity.
