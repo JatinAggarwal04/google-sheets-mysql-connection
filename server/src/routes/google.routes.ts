@@ -128,6 +128,41 @@ router.get('/spreadsheets/:spreadsheetId', async (req: Request, res: Response) =
 });
 
 /**
+ * GET /api/google/spreadsheets/:spreadsheetId/sheets/:sheetName/is-empty
+ * Check if a sheet is empty
+ */
+router.get('/spreadsheets/:spreadsheetId/sheets/:sheetName/is-empty', async (req: Request, res: Response) => {
+    try {
+        const { connectionId } = req.query;
+        const { spreadsheetId, sheetName } = req.params;
+
+        if (!connectionId) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'connectionId is required' },
+            });
+        }
+
+        const isEmpty = await googleSheets.isSheetEmpty(
+            connectionId as string,
+            spreadsheetId,
+            decodeURIComponent(sheetName)
+        );
+
+        res.json({
+            success: true,
+            data: { isEmpty },
+        });
+    } catch (error) {
+        logger.error('Failed to check if sheet is empty:', error);
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Failed to check sheet status' },
+        });
+    }
+});
+
+/**
  * GET /api/google/spreadsheets/:spreadsheetId/sheets/:sheetName/data
  * Get sheet data
  */

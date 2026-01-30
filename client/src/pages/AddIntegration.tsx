@@ -60,6 +60,9 @@ export function AddIntegrationPage() {
 
     const [isGoogleConnecting, setIsGoogleConnecting] = useState(false);
     const [isMysqlSelecting, setIsMysqlSelecting] = useState(false);
+    const [isSheetEmpty, setIsSheetEmpty] = useState(false);
+    const [isTableEmpty, setIsTableEmpty] = useState(false);
+    const [checkingEmptyStatus, setCheckingEmptyStatus] = useState(false);
 
     // Step 1: Google Connection
     const [googleConnections, setGoogleConnections] = useState<GoogleConnection[]>([]);
@@ -346,6 +349,54 @@ export function AddIntegrationPage() {
         }
     };
 
+    // Check if sheet is empty when selected
+    useEffect(() => {
+        const checkSheet = async () => {
+            if (!selectedGoogleConnection || !selectedSpreadsheet || !selectedSheet) {
+                setIsSheetEmpty(false);
+                return;
+            }
+            try {
+                setCheckingEmptyStatus(true);
+                const { isEmpty } = await api.google.isSheetEmpty(selectedGoogleConnection, selectedSpreadsheet, selectedSheet);
+                setIsSheetEmpty(isEmpty);
+            } catch (err) {
+                console.error('Failed to check sheet status:', err);
+            } finally {
+                setCheckingEmptyStatus(false);
+            }
+        };
+        checkSheet();
+    }, [selectedGoogleConnection, selectedSpreadsheet, selectedSheet]);
+
+    // Check if table is empty when selected
+    useEffect(() => {
+        const checkTable = async () => {
+            if (!selectedMysqlConnection || (!selectedTable && !createNewTable)) {
+                setIsTableEmpty(false);
+                return;
+            }
+
+            if (createNewTable) {
+                setIsTableEmpty(true); // New table is always empty
+                return;
+            }
+
+            if (selectedTable) {
+                try {
+                    setCheckingEmptyStatus(true);
+                    const { isEmpty } = await api.mysql.isTableEmpty(selectedMysqlConnection, selectedTable);
+                    setIsTableEmpty(isEmpty);
+                } catch (err) {
+                    console.error('Failed to check table status:', err);
+                } finally {
+                    setCheckingEmptyStatus(false);
+                }
+            }
+        };
+        checkTable();
+    }, [selectedMysqlConnection, selectedTable, createNewTable]);
+
     const handleNext = async () => {
         setError(null);
 
@@ -407,6 +458,17 @@ export function AddIntegrationPage() {
                     setError('Please select a primary key column');
                     return;
                 }
+
+                // Empty source validation
+                if (syncDirection === 'sheets_to_mysql' && isSheetEmpty) {
+                    setError('Cannot use empty Google Sheet as source for One-Way sync');
+                    return;
+                }
+                if (syncDirection === 'mysql_to_sheets' && isTableEmpty && !createNewTable) {
+                    setError('Cannot use empty MySQL Table as source for One-Way sync');
+                    return;
+                }
+
                 const targetTable = createNewTable ? newTableName : selectedTable;
                 if (syncDirection === 'mysql_to_sheets') {
                     setIntegrationName(`${targetTable} → ${selectedSheet}`);
@@ -813,34 +875,36 @@ export function AddIntegrationPage() {
                                 <label className="form-label">Initial Data Source</label>
                                 <p className="text-sm text-secondary mb-2">Which data should be used to populate the other side initially?</p>
                                 <div className="radio-group">
-                                    <label className="radio-option">
+                                    <label className={`radio-option ${isSheetEmpty ? 'disabled' : ''}`}>
                                         <input
                                             type="radio"
                                             name="initialSyncSource"
                                             value="sheets"
                                             checked={initialSyncSource === 'sheets'}
+                                            disabled={isSheetEmpty}
                                             onChange={async () => {
                                                 setInitialSyncSource('sheets');
-                                                // Re-generate mappings for Sheets source
-                                                const headers = await loadSheetHeaders(); // This is cached/fast usually, or we could store it
+                                                const headers = await loadSheetHeaders();
                                                 generateMappings('sheets', headers, undefined);
                                             }}
                                         />
                                         <span>Google Sheets (overwrite Database)</span>
+                                        {isSheetEmpty && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                     </label>
-                                    <label className="radio-option">
+                                    <label className={`radio-option ${(isTableEmpty && !createNewTable) ? 'disabled' : ''}`}>
                                         <input
                                             type="radio"
                                             name="initialSyncSource"
                                             value="mysql"
                                             checked={initialSyncSource === 'mysql'}
+                                            disabled={isTableEmpty && !createNewTable}
                                             onChange={() => {
                                                 setInitialSyncSource('mysql');
-                                                // Re-generate mappings for MySQL source
                                                 generateMappings('mysql', undefined, mysqlSchema);
                                             }}
                                         />
                                         <span>MySQL (overwrite Sheet)</span>
+                                        {(isTableEmpty && !createNewTable) && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                     </label>
                                 </div>
                             </div>
@@ -1042,9 +1106,9 @@ export function AddIntegrationPage() {
                 <button
                     className="btn btn-primary"
                     onClick={handleNext}
-                    disabled={loading}
+                    disabled={loading || checkingEmptyStatus}
                 >
-                    {loading ? (
+                    {loading || checkingEmptyStatus ? (
                         <Loader2 size={18} className="spin" />
                     ) : step === 'review' ? (
                         <>

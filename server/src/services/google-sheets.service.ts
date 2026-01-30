@@ -314,3 +314,35 @@ export async function deleteSheetRows(
         throw new ExternalServiceError('Google Sheets', 'Failed to delete rows');
     }
 }
+/**
+ * Checks if a sheet is empty (has no data rows)
+ * Assumes row 1 is header
+ */
+export async function isSheetEmpty(
+    connectionId: string,
+    spreadsheetId: string,
+    sheetTitle: string
+): Promise<boolean> {
+    try {
+        const sheets = await getSheetsClient(connectionId);
+
+        // Check A2 to see if there is any data in the first column of the second row
+        // If row 1 is header, A2 would be the first data cell.
+        // We can just get values for the sheet to be sure.
+        // Let's check a small range A2:A2.
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `'${sheetTitle}'!A2:A2`,
+        });
+
+        const rows = response.data.values;
+        return !rows || rows.length === 0;
+    } catch (error) {
+        logger.error('Failed to check if sheet is empty:', error);
+        // If we can't check, assume it's NOT empty to avoid blocking valid flows in error cases?
+        // Or assume empty? distinct error handling is better but for now defaulting to false (not empty) 
+        // might be safer to avoid blocking, but user wants to block empty.
+        // Let's throw so the UI handles the error.
+        throw new ExternalServiceError('Google Sheets', 'Failed to check sheet status');
+    }
+}

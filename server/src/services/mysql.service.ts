@@ -442,3 +442,32 @@ export async function closeAllPools(): Promise<void> {
         poolCache.delete(id);
     }
 }
+/**
+ * Checks if a table is empty
+ */
+export async function isTableEmpty(
+    connectionId: string,
+    tableName: string
+): Promise<boolean> {
+    try {
+        const pool = await getPool(connectionId);
+
+        // Simple count check
+        // Using mysql.escapeId for safety although exact implementation might vary
+        // mysql2 pool.query automatically handles parameterized queries but table names 
+        // often need identifier escaping which isn't standard parameterization.
+        // We'll trust the input or use simple validation since it's an internal-ish tool.
+        // Better: use ?? for identifier escaping in mysql2.
+
+        const [rows] = await pool.query<RowDataPacket[]>(
+            'SELECT COUNT(*) as count FROM ??',
+            [tableName]
+        );
+
+        const count = rows[0]?.count;
+        return count === 0;
+    } catch (error) {
+        logger.error('Failed to check if table is empty:', error);
+        throw new ExternalServiceError('MySQL', 'Failed to check table status');
+    }
+}

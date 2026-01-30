@@ -199,6 +199,29 @@ router.get('/connections/:id/tables/:tableName/schema', async (req: Request, res
 });
 
 /**
+ * GET /api/mysql/connections/:connectionId/tables/:tableName/is-empty
+ * Check if a table is empty
+ */
+router.get('/connections/:connectionId/tables/:tableName/is-empty', async (req: Request, res: Response) => {
+    try {
+        const { connectionId, tableName } = req.params;
+
+        const isEmpty = await mysqlService.isTableEmpty(connectionId, tableName);
+
+        res.json({
+            success: true,
+            data: { isEmpty },
+        });
+    } catch (error) {
+        logger.error('Failed to check if table is empty:', error);
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Failed to check table status' },
+        });
+    }
+});
+
+/**
  * GET /api/mysql/connections/:id/tables/:tableName/data
  * Get table data
  */

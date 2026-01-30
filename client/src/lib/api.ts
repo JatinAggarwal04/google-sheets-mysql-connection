@@ -70,6 +70,11 @@ export const api = {
         listSpreadsheets: (connectionId: string) =>
             request<Array<{ id: string; name: string }>>(`/google/spreadsheets?connectionId=${connectionId}`),
 
+        isSheetEmpty: (connectionId: string, spreadsheetId: string, sheetName: string) =>
+            request<{ isEmpty: boolean }>(
+                `/google/spreadsheets/${spreadsheetId}/sheets/${encodeURIComponent(sheetName)}/is-empty?connectionId=${connectionId}`
+            ),
+
         getSpreadsheetInfo: (connectionId: string, spreadsheetId: string) =>
             request<{
                 spreadsheetId: string;
@@ -138,6 +143,9 @@ export const api = {
         deleteConnection: (id: string) => request(`/mysql/connections/${id}`, { method: 'DELETE' }),
 
         listTables: (connectionId: string) => request<string[]>(`/mysql/connections/${connectionId}/tables`),
+
+        isTableEmpty: (connectionId: string, tableName: string) =>
+            request<{ isEmpty: boolean }>(`/mysql/connections/${connectionId}/tables/${tableName}/is-empty`),
 
         getTableSchema: (connectionId: string, tableName: string) =>
             request<Array<{ column: string; type: string; nullable: boolean; key: string }>>(
