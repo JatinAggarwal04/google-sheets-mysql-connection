@@ -1,230 +1,141 @@
-# Google Sheets ↔ MySQL Sync Platform
+# SyncHub: Google Sheets ↔ MySQL Sync Platform
 
-A production-grade, multi-tenant SaaS platform for bidirectional synchronization between Google Sheets and MySQL databases.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
+![React](https://img.shields.io/badge/React-18.0-61dafb)
+![Node](https://img.shields.io/badge/Node.js-18+-green)
 
-![Platform Overview](https://via.placeholder.com/800x400?text=Google+Sheets+%E2%86%94+MySQL+Sync)
+SyncHub is a production-grade, multi-tenant SaaS platform engineered for reliable, bidirectional synchronization between Google Sheets and MySQL databases. It solves the "data silo" problem by treating Sheets as a dynamic UI for your database and your database as a robust backend for your Sheets.
 
-## ✨ Features
+![Dashboard Preview](file:///Users/jatinaggarwal/.gemini/antigravity/brain/9ba9ca90-f424-43cc-8e14-89de8740ff90/dashboard_state_1769717452783.png)
 
-- **Bidirectional Sync** - Real-time synchronization in both directions
-- **Multi-Tenant Architecture** - Each user has isolated data and connections
-- **OAuth-Based Google Access** - Secure access to user's Google Sheets
-- **Queue-Based Processing** - BullMQ for reliable job processing
-- **Conflict Resolution** - Intelligent handling of simultaneous changes
-- **AES-256 Encryption** - All credentials encrypted at rest
-- **Production Ready** - Comprehensive error handling and logging
+## ✨ Key Features
 
-## 🏗️ Architecture
+- **🔄 True Bidirectional Sync**: Changes in Sheets reflect in MySQL, and database updates push to Sheets in real-time.
+- **🛡️ Enterprise Security**:
+    - **Cloudflare Turnstile** protection on authentication.
+    - **AES-256-GCM** encryption for all sensitive credentials at rest.
+    - **OAuth 2.0** integration for secure Google access.
+- **🏗️ Robust Architecture**:
+    - **Queue-Based Processing**: Powered by **BullMQ** & **Redis** for fault tolerance and high throughput.
+    - **Atomic Operations**: MySQL transactions ensure data integrity.
+- **🧩 Smart Conflict Resolution**: Configurable strategies (Latest Wins, Sheet Wins, DB Wins) to handle concurrent edits.
+- **👥 Multi-Tenancy**: Complete data isolation between accounts using Row Level Security (RLS) patterns.
 
+## 🛠️ Tech Stack
+
+### Frontend (Client)
+- **Framework**: [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Language**: TypeScript
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
+- **Styling**: Modern CSS Variables & Responsive Design
+- **Security**: [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/) (Captcha replacement)
+- **UI Components**: [Lucide React](https://lucide.dev/) Icons
+
+### Backend (Server)
+- **Runtime**: Node.js
+- **Framework**: [Express.js](https://expressjs.com/)
+- **Language**: TypeScript
+- **Database**: [MySQL](https://www.mysql.com/) (User Data) + [Supabase](https://supabase.com/) (Auth/Meta)
+- **Queue System**: [BullMQ](https://docs.bullmq.io/) on [Redis](https://redis.io/)
+- **Validation**: [Zod](https://zod.dev/) for runtime schema validation
+- **Auth**: Supabase Auth (JWT) + [JOSE](https://github.com/panva/jose)
+
+## 🏗️ System Architecture
+
+Running on a decoupled client-server architecture, communicating via RESTful APIs.
+
+```mermaid
+graph TD
+    Client[React Client] -->|REST API| LB[Load Balancer / API Gateway]
+    LB --> Server[Express Server Cluster]
+    
+    subgraph Services
+        Server -->|Auth Check| Supabase[Supabase Auth]
+        Server -->|Jobs| Redis[Redis Queue]
+        Server -->|Read/Write| MySQL[(MySQL Database)]
+        Server -->|Sync API| Google[Google Sheets API]
+    end
+    
+    subgraph Workers
+        Worker[Sync Worker] -->|Consume| Redis
+        Worker -->|ETL| MySQL
+        Worker -->|ETL| Google
+    end
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   React/Vite    │────▶│  Express API    │────▶│    Supabase     │
-│    Frontend     │     │    Backend      │     │   (Auth + DB)   │
-└─────────────────┘     └────────┬────────┘     └─────────────────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    ▼            ▼            ▼
-              ┌──────────┐ ┌──────────┐ ┌──────────┐
-              │  Redis   │ │  Google  │ │   MySQL  │
-              │ (BullMQ) │ │   APIs   │ │ Database │
-              └──────────┘ └──────────┘ └──────────┘
-```
 
-## 📁 Project Structure
-
-```
-├── client/                 # React frontend (Vite)
-│   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── pages/          # Page components
-│   │   ├── stores/         # Zustand state management
-│   │   ├── lib/            # API client, utilities
-│   │   └── App.tsx         # Main app with routing
-│   └── package.json
-│
-├── server/                 # Express backend
-│   ├── src/
-│   │   ├── config/         # Environment, Redis, Supabase
-│   │   ├── lib/            # Logger, encryption, errors
-│   │   ├── types/          # TypeScript types
-│   │   ├── services/       # Business logic
-│   │   ├── middleware/     # Auth, error handling
-│   │   ├── routes/         # API routes
-│   │   └── index.ts        # Server entry point
-│   └── package.json
-│
-├── supabase/
-│   └── schema.sql          # Database schema
-│
-├── package.json            # Root workspace config
-└── .env.example            # Environment template
-```
-
-## 🚀 Quick Start
+## 🚀 Getting Started
 
 ### Prerequisites
-
 - Node.js 18+
-- Redis (for BullMQ)
-- Supabase account
-- Google Cloud Console project with OAuth credentials
-- MySQL database (for testing)
+- Redis (local or remote)
+- MySQL Server
+- Supabase Project
+- Google Cloud Console Project (with Sheets & Drive APIs enabled)
 
-### 1. Clone and Install
+### Installation
 
-```bash
-git clone <repository>
-cd google-sheets-mysql-sync
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/yourusername/synchub.git
+    cd synchub
+    ```
 
-# Install all dependencies
-npm install
-```
+2.  **Install dependencies** (Root, Client, and Server)
+    ```bash
+    npm install
+    ```
 
-### 2. Configure Environment
+3.  **Environment Configuration**
+    Create `.env` files based on the examples:
+    ```bash
+    cp .env.example .env
+    cp client/.env.example client/.env
+    ```
+    *Fill in your Supabase keys, Google OAuth credentials, MySQL connection, and Redis URL.*
 
-```bash
-# Copy environment templates
-cp .env.example .env
-cp client/.env.example client/.env
+4.  **Database Setup**
+    - Run the schema migration script located in `supabase/schema.sql` against your Supabase PostgreSQL instance.
+    - Ensure your local/remote MySQL instance is running.
 
-# Edit .env and client/.env with your values
-```
+5.  **Start the Application**
+    ```bash
+    npm run dev
+    ```
+    This concurrently starts:
+    - **Frontend**: http://localhost:5173
+    - **Backend**: http://localhost:3001
 
-### 3. Set Up Supabase
+## 🔄 Sync Workflow
 
-1. Create a new Supabase project
-2. Run the schema in `supabase/schema.sql` in the SQL Editor
-3. Copy your project URL and keys to `.env`
+The synchronization engine is the core of SyncHub. Here is how it handles data consistency:
 
-### 4. Set Up Google OAuth
+1.  **Trigger**: User initiates sync manually, or a scheduled job fires.
+2.  **Snapshot**: The worker fetches the current state of the Google Sheet and the MySQL Table.
+3.  **Diffing**: A hash-based comparison identifies new rows, modified cells, and deleted records.
+4.  **Resolution**: Conflicts are resolved based on the integration's settings.
+5.  **Execution**:
+    - **To Sheet**: Batch updates are sent to Google Sheets API.
+    - **To MySQL**: Bulk `INSERT`/`UPDATE`/`DELETE` queries are executed in a transaction.
+6.  **Audit**: The operation is logged in the `sync_history` table.
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable Google Sheets API and Google Drive API
-4. Configure OAuth consent screen
-5. Create OAuth 2.0 credentials
-6. Add redirect URI: `http://localhost:3001/api/auth/google/callback`
-7. Copy client ID and secret to `.env`
+## 📸 Interface
 
-### 5. Start Development
+### Data Table View
+Manage your synced data visually with supported CRUD operations.
+![Table Data](file:///Users/jatinaggarwal/.gemini/antigravity/brain/9ba9ca90-f424-43cc-8e14-89de8740ff90/table_data_upper_1769719536695.png)
 
-```bash
-# Start both client and server
-npm run dev
+## 🔐 Security & Compliance
 
-# Or start individually:
-cd server && npm run dev
-cd client && npm run dev
-```
-
-### 6. Open the Application
-
-**Important:** Due to OAuth/Cloudflare requirements, manually open:
-
-```
-http://localhost:5173
-```
-
-## 📋 Environment Variables
-
-### Server (.env)
-
-| Variable | Description |
-|----------|-------------|
-| `PORT` | Server port (default: 3001) |
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GOOGLE_REDIRECT_URI` | OAuth callback URL |
-| `REDIS_URL` | Redis connection URL |
-| `ENCRYPTION_KEY` | 32-byte hex key for AES-256 |
-| `CLIENT_URL` | Frontend URL for CORS |
-
-### Client (client/.env)
-
-| Variable | Description |
-|----------|-------------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
-
-## 🔐 Security
-
-- **Authentication**: Supabase Auth with JWT
-- **Authorization**: Row Level Security (RLS) policies
-- **Encryption**: AES-256-GCM for credentials with PBKDF2 key derivation
-- **CORS**: Whitelist-based origin validation
-- **Helmet**: HTTP security headers
-
-## 🔄 Sync Flow
-
-1. User creates an integration via the wizard
-2. System enqueues initial sync job to BullMQ
-3. Worker picks up job and processes sync:
-   - Read data from source (Sheets or MySQL)
-   - Compare with destination using hash-based diffing
-   - Apply changes (insert/update/delete)
-   - Log sync results
-4. Updates `last_sync_at` on integration
-
-## 📡 API Endpoints
-
-### Authentication
-- `GET /api/auth/google` - Initiate Google OAuth
-- `GET /api/auth/google/callback` - OAuth callback
-- `GET /api/auth/me` - Get current user
-
-### Google Connections
-- `GET /api/google/connections` - List connections
-- `DELETE /api/google/connections/:id` - Delete connection
-- `GET /api/google/spreadsheets` - List spreadsheets
-- `GET /api/google/spreadsheets/:id` - Get spreadsheet info
-
-### MySQL Connections
-- `GET /api/mysql/connections` - List connections
-- `POST /api/mysql/connections` - Create connection
-- `POST /api/mysql/connections/test` - Test connection
-- `DELETE /api/mysql/connections/:id` - Delete connection
-- `GET /api/mysql/connections/:id/tables` - List tables
-
-### Integrations
-- `GET /api/integrations` - List integrations
-- `POST /api/integrations` - Create integration
-- `GET /api/integrations/:id` - Get integration details
-- `DELETE /api/integrations/:id` - Delete integration
-- `POST /api/integrations/:id/pause` - Pause sync
-- `POST /api/integrations/:id/resume` - Resume sync
-- `GET /api/integrations/:id/logs` - Get sync logs
-
-### Health
-- `GET /api/health` - Basic health check
-- `GET /api/health/detailed` - Detailed service status
-
-## 🧪 Development
-
-```bash
-# Run server in development
-cd server && npm run dev
-
-# Run client in development
-cd client && npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-cd server && npm test
-```
-
-## 📝 License
-
-MIT
+- **JWT Authentication**: Stateless authentication using Supabase.
+- **Input Validation**: All API inputs are strictly validated using Zod schemas.
+- **Bot Protection**: Login and Signup endpoints are protected by Cloudflare Turnstile.
+- **Credential Encryption**: Database credentials for user's MySQL connections are never stored in plain text.
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
