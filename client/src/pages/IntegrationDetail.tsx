@@ -297,7 +297,7 @@ export function IntegrationDetailPage() {
     }
 
     return (
-    return (
+
         <div className="page-container">
             {/* Header Section */}
             <header className="page-header">
