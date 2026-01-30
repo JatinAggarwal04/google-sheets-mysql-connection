@@ -292,9 +292,10 @@ export function DashboardPage() {
                                     <button
                                         className="btn btn-ghost btn-sm btn-danger-text"
                                         onClick={() => initiateDelete(integration.id)}
+                                        style={{ gap: '0.5rem' }}
                                     >
                                         <Trash2 size={14} />
-                                        Delete
+                                        <span>Delete</span>
                                     </button>
                                 </div>
                             </div>
