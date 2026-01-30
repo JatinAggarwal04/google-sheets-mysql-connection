@@ -58,6 +58,9 @@ export function AddIntegrationPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const [isGoogleConnecting, setIsGoogleConnecting] = useState(false);
+    const [isMysqlSelecting, setIsMysqlSelecting] = useState(false);
+
     // Step 1: Google Connection
     const [googleConnections, setGoogleConnections] = useState<GoogleConnection[]>([]);
     const [selectedGoogleConnection, setSelectedGoogleConnection] = useState<string | null>(null);
@@ -134,6 +137,7 @@ export function AddIntegrationPage() {
 
     const proceedWithGoogleConnect = async () => {
         try {
+            setIsGoogleConnecting(true);
             setShowGoogleDisclaimer(false);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
 
@@ -145,6 +149,7 @@ export function AddIntegrationPage() {
 
             if (!popup) {
                 setError('Popup blocked! Please allow popups for this site.');
+                setIsGoogleConnecting(false);
                 return;
             }
 
@@ -156,10 +161,12 @@ export function AddIntegrationPage() {
                     window.removeEventListener('message', messageHandler);
                     clearInterval(checkClosedInterval);
                     await loadGoogleConnections();
+                    setIsGoogleConnecting(false);
                 } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
                     window.removeEventListener('message', messageHandler);
                     clearInterval(checkClosedInterval);
                     setError(event.data.error || 'Google connection failed');
+                    setIsGoogleConnecting(false);
                 }
             };
 
@@ -170,13 +177,15 @@ export function AddIntegrationPage() {
                 if (popup.closed) {
                     clearInterval(checkClosedInterval);
                     window.removeEventListener('message', messageHandler);
+                    // If we didn't get success/error yet, assume user closed it
+                    setIsGoogleConnecting(false);
                     loadGoogleConnections();
                 }
             }, 1000);
 
-
         } catch (err) {
             setError('Failed to initiate Google connection');
+            setIsGoogleConnecting(false);
         }
     };
 
@@ -480,6 +489,7 @@ export function AddIntegrationPage() {
                                     key={conn.id}
                                     className={`connection-option ${selectedGoogleConnection === conn.id ? 'selected' : ''}`}
                                     onClick={() => setSelectedGoogleConnection(conn.id)}
+                                    disabled={isGoogleConnecting}
                                 >
                                     <div className="connection-icon google">
                                         <Sheet size={20} />
@@ -494,12 +504,18 @@ export function AddIntegrationPage() {
                                 </button>
                             ))}
 
-                            <button className="connection-option add-new" onClick={handleConnectGoogle}>
+                            <button
+                                className="connection-option add-new"
+                                onClick={handleConnectGoogle}
+                                disabled={isGoogleConnecting}
+                            >
                                 <div className="connection-icon">
-                                    <Plus size={20} />
+                                    {isGoogleConnecting ? <Loader2 size={20} className="spin" /> : <Plus size={20} />}
                                 </div>
                                 <div className="connection-info">
-                                    <span className="connection-name">Connect New Account</span>
+                                    <span className="connection-name">
+                                        {isGoogleConnecting ? 'Connecting...' : 'Connect New Account'}
+                                    </span>
                                     <span className="connection-type">Add Google account via OAuth</span>
                                 </div>
                             </button>
@@ -520,13 +536,21 @@ export function AddIntegrationPage() {
                                         <button
                                             key={conn.id}
                                             className={`connection-option ${selectedMysqlConnection === conn.id ? 'selected' : ''}`}
-                                            onClick={() => {
+                                            onClick={async () => {
+                                                if (selectedMysqlConnection === conn.id) return; // Already selected
                                                 setSelectedMysqlConnection(conn.id);
-                                                loadMysqlTables(conn.id);
+                                                setIsMysqlSelecting(true);
+                                                await loadMysqlTables(conn.id);
+                                                setIsMysqlSelecting(false);
                                             }}
+                                            disabled={isMysqlSelecting}
                                         >
                                             <div className="connection-icon mysql">
-                                                <Database size={20} />
+                                                {isMysqlSelecting && selectedMysqlConnection === conn.id ? (
+                                                    <Loader2 size={20} className="spin" />
+                                                ) : (
+                                                    <Database size={20} />
+                                                )}
                                             </div>
                                             <div className="connection-info">
                                                 <span className="connection-name">{conn.name}</span>
@@ -538,7 +562,7 @@ export function AddIntegrationPage() {
                                         </button>
                                     ))}
 
-                                    <button className="connection-option add-new" onClick={() => setShowNewMysqlForm(true)}>
+                                    <button className="connection-option add-new" disabled={isMysqlSelecting} onClick={() => setShowNewMysqlForm(true)}>
                                         <div className="connection-icon">
                                             <Plus size={20} />
                                         </div>
