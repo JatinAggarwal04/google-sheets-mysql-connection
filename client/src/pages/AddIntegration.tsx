@@ -90,6 +90,7 @@ export function AddIntegrationPage() {
     // Step 4: Mapping
     const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
     const [syncDirection, setSyncDirection] = useState<'sheets_to_mysql' | 'mysql_to_sheets' | 'bidirectional'>('bidirectional');
+    const [initialSyncSource, setInitialSyncSource] = useState<'sheets' | 'mysql'>('sheets');
 
     // Step 5: Review
     const [integrationName, setIntegrationName] = useState('');
@@ -365,6 +366,7 @@ export function AddIntegrationPage() {
                 tableName: createNewTable ? newTableName : selectedTable!,
                 createNewTable,
                 syncDirection,
+                initialSyncSource: syncDirection === 'bidirectional' ? initialSyncSource : undefined,
                 columnMappings: columnMappings.map(m => ({
                     sheetColumn: m.sheetColumn,
                     mysqlColumn: m.mysqlColumn,
@@ -687,6 +689,35 @@ export function AddIntegrationPage() {
                             </div>
                         </div>
 
+                        {syncDirection === 'bidirectional' && (
+                            <div className="form-group" style={{ marginBottom: 'var(--space-6)' }}>
+                                <label className="form-label">Initial Data Source</label>
+                                <p className="text-sm text-secondary mb-2">Which data should be used to populate the other side initially?</p>
+                                <div className="radio-group">
+                                    <label className="radio-option">
+                                        <input
+                                            type="radio"
+                                            name="initialSyncSource"
+                                            value="sheets"
+                                            checked={initialSyncSource === 'sheets'}
+                                            onChange={() => setInitialSyncSource('sheets')}
+                                        />
+                                        <span>Google Sheets (overwrite Database)</span>
+                                    </label>
+                                    <label className="radio-option">
+                                        <input
+                                            type="radio"
+                                            name="initialSyncSource"
+                                            value="mysql"
+                                            checked={initialSyncSource === 'mysql'}
+                                            onChange={() => setInitialSyncSource('mysql')}
+                                        />
+                                        <span>MySQL (overwrite Sheet)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mapping-table-container">
                             <table className="table mapping-table">
                                 <thead>
@@ -804,11 +835,19 @@ export function AddIntegrationPage() {
                             <div className="review-item">
                                 <span className="review-label">Sync Direction:</span>
                                 <span className="review-value">
-                                    {syncDirection === 'sheets_to_mysql' ? 'Sheets → MySQL' :
-                                        syncDirection === 'mysql_to_sheets' ? 'MySQL → Sheets' :
-                                            'Bidirectional'}
+                                    {syncDirection === 'bidirectional' ? 'Bidirectional ⇄' :
+                                        syncDirection === 'sheets_to_mysql' ? 'Sheets → MySQL' : 'MySQL → Sheets'}
                                 </span>
                             </div>
+
+                            {syncDirection === 'bidirectional' && (
+                                <div className="review-item">
+                                    <span className="review-label">Initial Data Source:</span>
+                                    <span className="review-value">
+                                        {initialSyncSource === 'sheets' ? 'Google Sheets' : 'MySQL Database'}
+                                    </span>
+                                </div>
+                            )}
 
                             <div className="review-item">
                                 <span className="review-label">Columns:</span>
@@ -820,7 +859,7 @@ export function AddIntegrationPage() {
                             <AlertCircle size={18} />
                             <span>An initial sync will start automatically after creation</span>
                         </div>
-                    </div>
+                    </div >
                 );
         }
     };

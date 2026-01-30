@@ -50,6 +50,7 @@ export const createIntegrationSchema = z.object({
         })
     ),
     conflictResolution: z.enum(['sheets_wins', 'mysql_wins', 'latest_wins']).optional(),
+    initialSyncSource: z.enum(['sheets', 'mysql']).optional(),
 });
 
 export type CreateIntegrationRequest = z.infer<typeof createIntegrationSchema>;

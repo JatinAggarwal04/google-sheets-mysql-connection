@@ -103,11 +103,21 @@ export async function createIntegration(
         .update({ status: 'active' })
         .eq('id', integrationId);
 
+    // Determine initial sync direction
+    let initialDirection: 'sheets_to_mysql' | 'mysql_to_sheets';
+
+    if (request.syncDirection === 'bidirectional') {
+        // Use user preference if provided, otherwise default to sheets_to_mysql (legacy behavior)
+        initialDirection = request.initialSyncSource === 'mysql' ? 'mysql_to_sheets' : 'sheets_to_mysql';
+    } else {
+        initialDirection = request.syncDirection === 'mysql_to_sheets' ? 'mysql_to_sheets' : 'sheets_to_mysql';
+    }
+
     // Enqueue initial sync job
     await enqueueSyncJob({
         integrationId,
         tenantId,
-        direction: request.syncDirection === 'mysql_to_sheets' ? 'mysql_to_sheets' : 'sheets_to_mysql',
+        direction: initialDirection,
         triggeredBy: 'initial',
     });
 
