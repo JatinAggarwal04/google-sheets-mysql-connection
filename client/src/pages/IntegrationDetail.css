@@ -12,16 +12,16 @@
 /* Header */
 .detail-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-4);
     margin-bottom: var(--space-8);
 }
 
 .header-top {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    /* Keep title items together */
+    /* No longer needed as wrapper, but keeping for compatibility or removing if unused in TSX */
+    display: contents;
 }
 
 .header-left {
@@ -38,7 +38,8 @@
 .header-actions {
     display: flex;
     gap: var(--space-3);
-    /* No margin-left auto, so it stays left */
+    /* Auto margin left to push to right if not using justify-between */
+    margin-left: auto;
 }
 
 /* Sections */

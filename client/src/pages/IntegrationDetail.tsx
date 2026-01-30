@@ -300,15 +300,13 @@ export function IntegrationDetailPage() {
         <div className="integration-detail">
             {/* Header */}
             <div className="detail-header">
-                <div className="header-top">
-                    <div className="header-left">
-                        <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
-                            <ArrowLeft size={18} />
-                            Back
-                        </button>
-                        <h1>{integration.name}</h1>
-                        {getStatusBadge(integration.status)}
-                    </div>
+                <div className="header-left">
+                    <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
+                    <h1>{integration.name}</h1>
+                    {getStatusBadge(integration.status)}
                 </div>
 
                 <div className="header-actions">
