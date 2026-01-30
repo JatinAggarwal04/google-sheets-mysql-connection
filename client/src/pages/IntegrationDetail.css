@@ -2,11 +2,29 @@
    Integration Detail Page Styles
    =========================================== */
 
+
 .integration-detail {
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
+    padding: var(--space-6);
+}
+
+/* Breadcrumb */
+.detail-breadcrumb {
+    margin-bottom: var(--space-4);
+}
+
+.detail-breadcrumb .btn-ghost {
+    padding-left: 0;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.detail-breadcrumb .btn-ghost:hover {
+    background: transparent;
+    color: var(--text-primary);
 }
 
 /* Header */
@@ -19,27 +37,23 @@
     margin-bottom: var(--space-8);
 }
 
-.header-top {
-    /* No longer needed as wrapper, but keeping for compatibility or removing if unused in TSX */
-    display: contents;
-}
-
-.header-left {
+.header-title-section {
     display: flex;
     align-items: center;
     gap: var(--space-4);
 }
 
-.header-left h1 {
+.header-title-section h1 {
     font-size: var(--font-size-2xl);
+    /* 1.5rem / 24px */
+    line-height: 1.2;
     margin: 0;
 }
 
 .header-actions {
     display: flex;
     gap: var(--space-3);
-    /* Auto margin left to push to right if not using justify-between */
-    margin-left: auto;
+    align-items: center;
 }
 
 /* Sections */
