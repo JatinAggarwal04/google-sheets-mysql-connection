@@ -47,6 +47,25 @@ export function AuthCallbackPage() {
                     <CheckCircle size={48} className="text-success" style={{ marginBottom: '1rem', color: '#10B981' }} />
                     <h2>Successfully Connected!</h2>
                     <p>This window will close automatically...</p>
+                    <button
+                        onClick={() => window.close()}
+                        style={{
+                            marginTop: '1rem',
+                            padding: '0.5rem 1rem',
+                            backgroundColor: '#3B82F6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.25rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Close Window
+                    </button>
+                    <script dangerouslySetInnerHTML={{
+                        __html: `
+                        // Fallback close attempt
+                        setTimeout(function() { window.close(); }, 3000);
+                    `}} />
                 </>
             ) : (
                 <>

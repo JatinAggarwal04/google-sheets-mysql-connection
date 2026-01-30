@@ -7,7 +7,7 @@ import { getEnv } from '../config/env.js';
 import { getSupabaseAdmin } from '../config/supabase.js';
 import { encryptCredentials, decryptCredentials } from '../lib/encryption.js';
 import { logger } from '../lib/logger.js';
-import { ExternalServiceError, NotFoundError } from '../lib/errors.js';
+import { ExternalServiceError, NotFoundError, ConflictError } from '../lib/errors.js';
 import type { GoogleConnection } from '../types/database.js';
 
 const SCOPES = [
@@ -262,7 +262,7 @@ export async function deleteGoogleConnection(
     }
 
     if (count && count > 0) {
-        throw new Error(`Cannot delete connection: It is used by ${count} active integration(s). Please delete them first.`);
+        throw new ConflictError(`Cannot delete connection: It is used by ${count} active integration(s). Please delete them first.`);
     }
 
     const { error } = await supabase
