@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/Dashboard';
 import { AddIntegrationPage } from './pages/AddIntegration';
 import { IntegrationDetailPage } from './pages/IntegrationDetail';
 import { ConnectionsPage } from './pages/Connections';
+import { AuthCallbackPage } from './pages/AuthCallback';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuthStore();
@@ -42,6 +43,7 @@ export default function App() {
             <Routes>
                 <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
                 <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+                <Route path="/auth-callback" element={<AuthCallbackPage />} />
 
                 <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
                     <Route path="/dashboard" element={<DashboardPage />} />

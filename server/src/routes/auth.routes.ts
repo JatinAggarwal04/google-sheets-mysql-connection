@@ -92,10 +92,10 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 
         logger.info(`Google connection saved for tenant ${stateData.tenantId}`);
 
-        res.redirect(`${env.CLIENT_URL}/dashboard?google_connected=true`);
+        res.redirect(`${env.CLIENT_URL}/auth-callback?google_connected=true`);
     } catch (error) {
         logger.error('OAuth callback error:', error);
-        res.redirect(`${env.CLIENT_URL}/dashboard?error=oauth_failed`);
+        res.redirect(`${env.CLIENT_URL}/auth-callback?error=oauth_failed`);
     }
 });
 

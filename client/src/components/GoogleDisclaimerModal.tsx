@@ -31,7 +31,7 @@ export function GoogleDisclaimerModal({ isOpen, onClose, onConfirm }: GoogleDisc
 
                     <p>
                         While we wait for verification, you will see a warning screen when connecting your account.
-                        This is normal for apps in "Testing Mode".
+                        This is normal for apps in the verification process.
                     </p>
 
                     <div className="steps-guide">

@@ -77,16 +77,57 @@ export function ConnectionsPage() {
         try {
             setShowGoogleDisclaimer(false);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
-            window.open(authUrl, '_blank', 'width=600,height=700');
+            const width = 600;
+            const height = 700;
+            const left = window.screen.width / 2 - width / 2;
+            const top = window.screen.height / 2 - height / 2;
 
-            // Poll for new connection
-            const interval = setInterval(async () => {
-                await loadConnections();
-            }, 2000);
+            const popup = window.open(
+                authUrl,
+                'Google Auth',
+                `width=${width},height=${height},left=${left},top=${top}`
+            );
 
-            setTimeout(() => clearInterval(interval), 60000);
-        } catch (err) {
-            setError('Failed to initiate Google connection');
+            if (!popup) {
+                setError('Popup blocked! Please allow popups for this site.');
+                return;
+            }
+
+            // Message listener
+            const messageHandler = async (event: MessageEvent) => {
+                if (event.origin !== window.location.origin) return;
+
+                if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                    window.removeEventListener('message', messageHandler);
+                    clearInterval(checkClosedInterval);
+                    await loadConnections();
+                } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                    window.removeEventListener('message', messageHandler);
+                    clearInterval(checkClosedInterval);
+                    setError(event.data.error || 'Google connection failed');
+                }
+            };
+
+            window.addEventListener('message', messageHandler);
+
+            // Check if window closed without success
+            const checkClosedInterval = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkClosedInterval);
+                    window.removeEventListener('message', messageHandler);
+                    // Don't set error here immediately as it might have closed after success
+                    // The success handler handles the clean up.
+                    // But if we are here and still listening, it means it closed without message.
+                    // We can check if we should show error.
+                    // However, due to race conditions, it's safer to just rely on user re-trying or explicit error messages.
+                    // Or set a timeout to check if connections updated? 
+                    // Let's reload connections just in case.
+                    loadConnections();
+                }
+            }, 1000);
+
+        } catch (err: any) {
+            setError(err.message || 'Failed to initiate Google connection');
         }
     };
 
@@ -98,7 +139,8 @@ export function ConnectionsPage() {
             await loadConnections();
         } catch (err: any) {
             // Extract error message if available
-            const message = err.response?.data?.error || err.message || 'Failed to delete connection';
+            console.error('Delete error:', err);
+            const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to delete connection';
             setError(message);
         }
     };

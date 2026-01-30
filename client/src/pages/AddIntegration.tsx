@@ -135,14 +135,45 @@ export function AddIntegrationPage() {
         try {
             setShowGoogleDisclaimer(false);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
-            window.open(authUrl, '_blank', 'width=600,height=700');
 
-            // Poll for new connection
-            const interval = setInterval(async () => {
-                await loadGoogleConnections();
-            }, 2000);
+            const popup = window.open(
+                authUrl,
+                'Google Auth',
+                `width=600,height=700,left=${window.screen.width / 2 - 300},top=${window.screen.height / 2 - 350}`
+            );
 
-            setTimeout(() => clearInterval(interval), 60000);
+            if (!popup) {
+                setError('Popup blocked! Please allow popups for this site.');
+                return;
+            }
+
+            // Message listener
+            const messageHandler = async (event: MessageEvent) => {
+                if (event.origin !== window.location.origin) return;
+
+                if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                    window.removeEventListener('message', messageHandler);
+                    clearInterval(checkClosedInterval);
+                    await loadGoogleConnections();
+                } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                    window.removeEventListener('message', messageHandler);
+                    clearInterval(checkClosedInterval);
+                    setError(event.data.error || 'Google connection failed');
+                }
+            };
+
+            window.addEventListener('message', messageHandler);
+
+            // Check if window closed
+            const checkClosedInterval = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkClosedInterval);
+                    window.removeEventListener('message', messageHandler);
+                    loadGoogleConnections();
+                }
+            }, 1000);
+
+
         } catch (err) {
             setError('Failed to initiate Google connection');
         }
