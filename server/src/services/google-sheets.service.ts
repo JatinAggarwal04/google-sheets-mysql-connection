@@ -144,10 +144,22 @@ export async function updateSheetData(
     try {
         const sheets = await getSheetsClient(connectionId);
 
-        // Convert rows to 2D array
+        // Convert rows to 2D array with safe type conversion
         const values = [
             headers,
-            ...rows.map((row) => headers.map((h) => row[h] ?? '')),
+            ...rows.map((row) => headers.map((h) => {
+                const val = row[h];
+                if (val instanceof Date) {
+                    return val.toISOString();
+                }
+                if (val === null || val === undefined) {
+                    return '';
+                }
+                if (typeof val === 'object') {
+                    return JSON.stringify(val);
+                }
+                return val;
+            })),
         ];
 
         // Clear existing data
@@ -184,7 +196,19 @@ export async function appendSheetRows(
     try {
         const sheets = await getSheetsClient(connectionId);
 
-        const values = rows.map((row) => headers.map((h) => row[h] ?? ''));
+        const values = rows.map((row) => headers.map((h) => {
+            const val = row[h];
+            if (val instanceof Date) {
+                return val.toISOString();
+            }
+            if (val === null || val === undefined) {
+                return '';
+            }
+            if (typeof val === 'object') {
+                return JSON.stringify(val);
+            }
+            return val;
+        }));
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
@@ -215,7 +239,19 @@ export async function updateSheetRow(
     try {
         const sheets = await getSheetsClient(connectionId);
 
-        const values = [headers.map((h) => row[h] ?? '')];
+        const values = [headers.map((h) => {
+            const val = row[h];
+            if (val instanceof Date) {
+                return val.toISOString();
+            }
+            if (val === null || val === undefined) {
+                return '';
+            }
+            if (typeof val === 'object') {
+                return JSON.stringify(val);
+            }
+            return val;
+        })];
 
         await sheets.spreadsheets.values.update({
             spreadsheetId,
