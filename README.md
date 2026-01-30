@@ -22,7 +22,6 @@ SyncHub acts as a **smart bridge** between your Google Sheet and MySQL Database.
 It uses a **Diffing Engine** to compare both sides and only syncs what changed, ensuring efficiency.
 
 ## ✨ Key Features
-## ✨ Key Features
 
 - **🔄 True Bidirectional Sync**: Changes in Sheets reflect in MySQL, and database updates push to Sheets in real-time.
 - **🛡️ Enterprise Security**:
