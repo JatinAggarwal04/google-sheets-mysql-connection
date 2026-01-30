@@ -19,6 +19,7 @@ import {
     CheckCircle,
     Clock,
 } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
 import './Dashboard.css';
 
 interface Integration {
@@ -37,7 +38,15 @@ export function DashboardPage() {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        id: string | null;
+        loading: boolean;
+    }>({
+        isOpen: false,
+        id: null,
+        loading: false
+    });
 
     useEffect(() => {
         loadIntegrations();
@@ -74,14 +83,21 @@ export function DashboardPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const initiateDelete = (id: string) => {
+        setDeleteModal({ isOpen: true, id, loading: false });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.id) return;
+
+        setDeleteModal(prev => ({ ...prev, loading: true }));
         try {
-            await api.integrations.delete(id);
+            await api.integrations.delete(deleteModal.id);
             await loadIntegrations();
+            setDeleteModal({ isOpen: false, id: null, loading: false });
         } catch (err) {
             setError('Failed to delete integration');
-        } finally {
-            setDeleteConfirmId(null);
+            setDeleteModal(prev => ({ ...prev, isOpen: false, loading: false }));
         }
     };
 
@@ -275,9 +291,10 @@ export function DashboardPage() {
 
                                     <button
                                         className="btn btn-ghost btn-sm btn-danger-text"
-                                        onClick={() => setDeleteConfirmId(integration.id)}
+                                        onClick={() => initiateDelete(integration.id)}
                                     >
                                         <Trash2 size={14} />
+                                        Delete
                                     </button>
                                 </div>
                             </div>
@@ -286,23 +303,16 @@ export function DashboardPage() {
                 )}
             </div>
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmId && (
-                <div className="delete-confirm-overlay">
-                    <div className="delete-confirm-modal">
-                        <h4>Confirm Delete Integration</h4>
-                        <p>Are you sure you want to delete this integration? This action cannot be undone.</p>
-                        <div className="delete-confirm-actions">
-                            <button className="btn btn-secondary" onClick={() => setDeleteConfirmId(null)}>
-                                Cancel
-                            </button>
-                            <button className="btn btn-danger" onClick={() => handleDelete(deleteConfirmId)}>
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                title="Delete Integration"
+                message="Are you sure you want to delete this integration? This action cannot be undone and will stop all future syncs."
+                confirmLabel="Delete"
+                isDestructive={true}
+                isLoading={deleteModal.loading}
+                onClose={() => setDeleteModal({ isOpen: false, id: null, loading: false })}
+                onConfirm={handleConfirmDelete}
+            />
         </div>
     );
 }
