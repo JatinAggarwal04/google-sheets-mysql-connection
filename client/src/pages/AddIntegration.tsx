@@ -212,6 +212,22 @@ export function AddIntegrationPage() {
         }
     };
 
+    const [mysqlSchema, setMysqlSchema] = useState<Array<{ column: string; type: string; key: string }>>([]);
+
+    // Helper to map MySQL types to generic types
+    const mapMysqlTypeToGeneric = (mysqlType: string): string => {
+        const type = mysqlType.toLowerCase();
+        if (type.includes('int') && !type.includes('bigint')) return 'INT';
+        if (type.includes('bigint')) return 'BIGINT';
+        if (type.includes('varchar')) return 'VARCHAR(255)';
+        if (type.includes('text')) return 'TEXT';
+        if (type.includes('decimal') || type.includes('float') || type.includes('double')) return 'DECIMAL(10,2)';
+        if (type.includes('bool') || type.includes('tinyint')) return 'BOOLEAN';
+        if (type.includes('datetime') || type.includes('timestamp')) return 'DATETIME';
+        if (type.includes('date')) return 'DATE';
+        return 'VARCHAR(255)';
+    };
+
     const loadSpreadsheets = async () => {
         if (!selectedGoogleConnection) return;
 
@@ -246,20 +262,66 @@ export function AddIntegrationPage() {
         try {
             setLoading(true);
             const data = await api.google.getSheetData(selectedGoogleConnection, selectedSpreadsheet, selectedSheet);
-            // setSheetHeaders(data.headers);
 
-            // Auto-generate initial mappings
-            const initialMappings: ColumnMapping[] = data.headers.map((header, index) => ({
-                sheetColumn: header,
-                mysqlColumn: header.toLowerCase().replace(/\s+/g, '_'),
-                dataType: 'VARCHAR(255)',
-                isPrimaryKey: index === 0,
-            }));
-            setColumnMappings(initialMappings);
+            // Only auto-map if using Sheets as source or if just loading data
+            // We'll return the headers for use in generateMappings
+            return data.headers;
         } catch (err) {
             setError('Failed to load sheet data');
+            return [];
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadMysqlSchema = async () => {
+        if (!selectedMysqlConnection) return;
+        const tableName = createNewTable ? newTableName : selectedTable;
+        if (!tableName) return;
+
+        try {
+            // If creating new table, we don't have schema yet
+            if (createNewTable) return [];
+
+            const schema = await api.mysql.getTableSchema(selectedMysqlConnection, tableName);
+            setMysqlSchema(schema);
+            return schema;
+        } catch (err) {
+            console.error('Failed to load MySQL schema:', err);
+            return [];
+        }
+    };
+
+    const generateMappings = (sourceProp?: 'sheets' | 'mysql', headersProp?: string[], schemaProp?: any[]) => {
+        const source = sourceProp || initialSyncSource;
+
+        // Logic for MySQL source
+        if (source === 'mysql' && !createNewTable) {
+            const schema = schemaProp || mysqlSchema;
+            if (!schema || schema.length === 0) return;
+
+            const mappings: ColumnMapping[] = schema.map(col => ({
+                sheetColumn: col.column, // Default sheet col name to DB col name
+                mysqlColumn: col.column,
+                dataType: mapMysqlTypeToGeneric(col.type),
+                isPrimaryKey: col.key === 'PRI',
+            }));
+            setColumnMappings(mappings);
+        }
+        // Logic for Sheets source
+        else {
+            // Need headers
+            // We can't easily get headers here effectively without passing them or storing them
+            // Let's rely on passed headers if available
+            if (headersProp) {
+                const mappings: ColumnMapping[] = headersProp.map((header, index) => ({
+                    sheetColumn: header,
+                    mysqlColumn: header.toLowerCase().replace(/\s+/g, '_'),
+                    dataType: 'VARCHAR(255)',
+                    isPrimaryKey: index === 0,
+                }));
+                setColumnMappings(mappings);
+            }
         }
     };
 
@@ -309,7 +371,24 @@ export function AddIntegrationPage() {
                     setError('Please select a spreadsheet and sheet');
                     return;
                 }
-                await loadSheetHeaders();
+                const headers = await loadSheetHeaders();
+                const schema = await loadMysqlSchema();
+
+                // Decide source based on current direction settings
+                // If Bidirectional, check initialSyncSource. If One-Way, infer from direction.
+                let effectiveSource: 'sheets' | 'mysql' = 'sheets';
+                if (syncDirection === 'mysql_to_sheets') {
+                    effectiveSource = 'mysql';
+                    setInitialSyncSource('mysql');
+                } else if (syncDirection === 'sheets_to_mysql') {
+                    effectiveSource = 'sheets';
+                    setInitialSyncSource('sheets');
+                } else {
+                    // Bidirectional - use current initialSyncSource state
+                    effectiveSource = initialSyncSource;
+                }
+
+                generateMappings(effectiveSource, headers, schema);
                 setStep('mapping');
                 break;
 
@@ -662,7 +741,12 @@ export function AddIntegrationPage() {
                                         name="syncDirection"
                                         value="sheets_to_mysql"
                                         checked={syncDirection === 'sheets_to_mysql'}
-                                        onChange={() => setSyncDirection('sheets_to_mysql')}
+                                        onChange={async () => {
+                                            setSyncDirection('sheets_to_mysql');
+                                            setInitialSyncSource('sheets');
+                                            const headers = await loadSheetHeaders();
+                                            generateMappings('sheets', headers, undefined);
+                                        }}
                                     />
                                     <span>Sheets → MySQL (one-way)</span>
                                 </label>
@@ -672,7 +756,11 @@ export function AddIntegrationPage() {
                                         name="syncDirection"
                                         value="mysql_to_sheets"
                                         checked={syncDirection === 'mysql_to_sheets'}
-                                        onChange={() => setSyncDirection('mysql_to_sheets')}
+                                        onChange={() => {
+                                            setSyncDirection('mysql_to_sheets');
+                                            setInitialSyncSource('mysql');
+                                            generateMappings('mysql', undefined, mysqlSchema);
+                                        }}
                                     />
                                     <span>MySQL → Sheets (one-way)</span>
                                 </label>
@@ -682,7 +770,14 @@ export function AddIntegrationPage() {
                                         name="syncDirection"
                                         value="bidirectional"
                                         checked={syncDirection === 'bidirectional'}
-                                        onChange={() => setSyncDirection('bidirectional')}
+                                        onChange={() => {
+                                            setSyncDirection('bidirectional');
+                                            // Keep current initial source or default to sheets?
+                                            // Let's keep current, but ensure mappings are consistent with it
+                                            generateMappings(initialSyncSource, undefined, mysqlSchema);
+                                            if (initialSyncSource === 'sheets') loadSheetHeaders().then(h => generateMappings('sheets', h, undefined));
+                                            else generateMappings('mysql', undefined, mysqlSchema);
+                                        }}
                                     />
                                     <span>Bidirectional ⇄</span>
                                 </label>
@@ -700,7 +795,12 @@ export function AddIntegrationPage() {
                                             name="initialSyncSource"
                                             value="sheets"
                                             checked={initialSyncSource === 'sheets'}
-                                            onChange={() => setInitialSyncSource('sheets')}
+                                            onChange={async () => {
+                                                setInitialSyncSource('sheets');
+                                                // Re-generate mappings for Sheets source
+                                                const headers = await loadSheetHeaders(); // This is cached/fast usually, or we could store it
+                                                generateMappings('sheets', headers, undefined);
+                                            }}
                                         />
                                         <span>Google Sheets (overwrite Database)</span>
                                     </label>
@@ -710,7 +810,11 @@ export function AddIntegrationPage() {
                                             name="initialSyncSource"
                                             value="mysql"
                                             checked={initialSyncSource === 'mysql'}
-                                            onChange={() => setInitialSyncSource('mysql')}
+                                            onChange={() => {
+                                                setInitialSyncSource('mysql');
+                                                // Re-generate mappings for MySQL source
+                                                generateMappings('mysql', undefined, mysqlSchema);
+                                            }}
                                         />
                                         <span>MySQL (overwrite Sheet)</span>
                                     </label>
