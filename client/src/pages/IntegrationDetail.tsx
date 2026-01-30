@@ -314,28 +314,24 @@ export function IntegrationDetailPage() {
                 </div>
 
                 <div className="header-actions">
-                    <button className="btn btn-secondary" onClick={() => { loadIntegration(); loadLogs(); }}>
+                    <button className="btn btn-ghost" onClick={() => { loadIntegration(); loadLogs(); }} title="Refresh Data">
                         <RefreshCw size={18} />
-                        Refresh
                     </button>
+                    {integration.status === 'active' ? (
+                        <button className="btn btn-ghost" onClick={handlePause} title="Pause Integration">
+                            <Pause size={18} />
+                        </button>
+                    ) : integration.status === 'paused' ? (
+                        <button className="btn btn-ghost" onClick={handleResume} title="Resume Integration">
+                            <Play size={18} />
+                        </button>
+                    ) : null}
                     <button className="btn btn-primary" onClick={handleSync}>
                         <Zap size={18} />
                         Sync Now
                     </button>
-                    {integration.status === 'active' ? (
-                        <button className="btn btn-secondary" onClick={handlePause}>
-                            <Pause size={18} />
-                            Pause
-                        </button>
-                    ) : integration.status === 'paused' ? (
-                        <button className="btn btn-primary" onClick={handleResume}>
-                            <Play size={18} />
-                            Resume
-                        </button>
-                    ) : null}
-                    <button className="btn btn-danger" onClick={() => setShowDeleteIntegrationConfirm(true)}>
+                    <button className="btn btn-danger btn-outline" onClick={() => setShowDeleteIntegrationConfirm(true)} title="Delete">
                         <Trash2 size={18} />
-                        Delete
                     </button>
                 </div>
             </div>
