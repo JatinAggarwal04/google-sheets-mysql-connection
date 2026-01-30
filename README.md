@@ -9,6 +9,19 @@ SyncHub is a production-grade, multi-tenant SaaS platform engineered for reliabl
 
 ![Dashboard Preview](https://drive.google.com/uc?export=view&id=1nPnwdhZZs_UTIvg5v8AJ7WFHyy7Z1k3R)
 
+## 💡 How It Works (The Concept)
+
+SyncHub acts as a **smart bridge** between your Google Sheet and MySQL Database.
+
+1.  **You Connect**: Link your Google Account and MySQL Database.
+2.  **You Map**: Tell SyncHub which Sheet columns match which Database columns (e.g., "Email" in Sheet = `user_email` in MySQL).
+3.  **We Sync**:
+    *   **Sheet → MySQL**: When you add a row in the Sheet, SyncHub inserts it into MySQL.
+    *   **MySQL → Sheet**: When your app updates the database, SyncHub updates the cell in the Sheet.
+    
+It uses a **Diffing Engine** to compare both sides and only syncs what changed, ensuring efficiency.
+
+## ✨ Key Features
 ## ✨ Key Features
 
 - **🔄 True Bidirectional Sync**: Changes in Sheets reflect in MySQL, and database updates push to Sheets in real-time.
@@ -59,7 +72,7 @@ graph LR
 
     subgraph Backend ["Backend API"]
         Server[Express Server]
-        Auth[Supabase (Auth & App Data)]
+        Auth["Supabase (Auth & App Data)"]
         Queue[Redis Queue]
     end
 
