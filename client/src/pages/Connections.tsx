@@ -12,6 +12,7 @@ import {
     CheckCircle,
     AlertCircle,
 } from 'lucide-react';
+import { GoogleDisclaimerModal } from '../components/GoogleDisclaimerModal';
 import './Connections.css';
 
 interface GoogleConnection {
@@ -46,6 +47,7 @@ export function ConnectionsPage() {
         password: '',
     });
     const [formLoading, setFormLoading] = useState(false);
+    const [showGoogleDisclaimer, setShowGoogleDisclaimer] = useState(false);
 
     useEffect(() => {
         loadConnections();
@@ -67,8 +69,13 @@ export function ConnectionsPage() {
         }
     };
 
-    const handleConnectGoogle = async () => {
+    const handleConnectGoogle = () => {
+        setShowGoogleDisclaimer(true);
+    };
+
+    const proceedWithGoogleConnect = async () => {
         try {
+            setShowGoogleDisclaimer(false);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
             window.open(authUrl, '_blank', 'width=600,height=700');
 
@@ -89,8 +96,10 @@ export function ConnectionsPage() {
         try {
             await api.google.deleteConnection(id);
             await loadConnections();
-        } catch (err) {
-            setError('Failed to delete connection');
+        } catch (err: any) {
+            // Extract error message if available
+            const message = err.response?.data?.error || err.message || 'Failed to delete connection';
+            setError(message);
         }
     };
 
@@ -139,6 +148,12 @@ export function ConnectionsPage() {
 
     return (
         <div className="connections-page">
+            <GoogleDisclaimerModal
+                isOpen={showGoogleDisclaimer}
+                onClose={() => setShowGoogleDisclaimer(false)}
+                onConfirm={proceedWithGoogleConnect}
+            />
+
             <div className="page-header">
                 <h1>Connections</h1>
                 <p>Manage your Google and MySQL connections</p>

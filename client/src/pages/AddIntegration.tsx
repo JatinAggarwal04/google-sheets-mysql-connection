@@ -18,6 +18,7 @@ import {
     Plus,
 } from 'lucide-react';
 import './AddIntegration.css';
+import { GoogleDisclaimerModal } from '../components/GoogleDisclaimerModal';
 
 type Step = 'google' | 'mysql' | 'sheet' | 'mapping' | 'review';
 
@@ -60,6 +61,7 @@ export function AddIntegrationPage() {
     // Step 1: Google Connection
     const [googleConnections, setGoogleConnections] = useState<GoogleConnection[]>([]);
     const [selectedGoogleConnection, setSelectedGoogleConnection] = useState<string | null>(null);
+    const [showGoogleDisclaimer, setShowGoogleDisclaimer] = useState(false);
 
     // Step 2: MySQL Connection
     const [mysqlConnections, setMysqlConnections] = useState<MySQLConnection[]>([]);
@@ -125,8 +127,13 @@ export function AddIntegrationPage() {
         }
     };
 
-    const handleConnectGoogle = async () => {
+    const handleConnectGoogle = () => {
+        setShowGoogleDisclaimer(true);
+    };
+
+    const proceedWithGoogleConnect = async () => {
         try {
+            setShowGoogleDisclaimer(false);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
             window.open(authUrl, '_blank', 'width=600,height=700');
 
@@ -789,6 +796,11 @@ export function AddIntegrationPage() {
 
     return (
         <div className="add-integration">
+            <GoogleDisclaimerModal
+                isOpen={showGoogleDisclaimer}
+                onClose={() => setShowGoogleDisclaimer(false)}
+                onConfirm={proceedWithGoogleConnect}
+            />
             {/* Progress Steps */}
             <div className="wizard-progress">
                 {steps.map((s, index) => (

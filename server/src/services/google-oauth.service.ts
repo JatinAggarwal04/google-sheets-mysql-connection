@@ -249,6 +249,22 @@ export async function deleteGoogleConnection(
 ): Promise<void> {
     const supabase = getSupabaseAdmin();
 
+    // Check for usages
+    const { count, error: countError } = await supabase
+        .from('integrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('google_connection_id', connectionId)
+        .eq('tenant_id', tenantId);
+
+    if (countError) {
+        logger.error('Failed to check dependencies for Google connection:', countError);
+        throw new Error('Failed to delete Google connection');
+    }
+
+    if (count && count > 0) {
+        throw new Error(`Cannot delete connection: It is used by ${count} active integration(s). Please delete them first.`);
+    }
+
     const { error } = await supabase
         .from('google_connections')
         .delete()
