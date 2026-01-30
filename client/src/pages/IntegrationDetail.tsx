@@ -297,298 +297,275 @@ export function IntegrationDetailPage() {
     }
 
     return (
-        <div className="integration-detail">
-            {/* Breadcrumb */}
-            <div className="detail-breadcrumb">
-                <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
-                    <ArrowLeft size={18} />
-                    Back to Dashboard
-                </button>
-            </div>
-
-            {/* Header */}
-            <div className="detail-header">
-                <div className="header-title-section">
-                    <h1>{integration.name}</h1>
-                    {getStatusBadge(integration.status)}
-                </div>
-
-                <div className="header-actions">
-                    <button className="btn btn-ghost" onClick={() => { loadIntegration(); loadLogs(); }} title="Refresh Data">
-                        <RefreshCw size={18} />
-                    </button>
-                    {integration.status === 'active' ? (
-                        <button className="btn btn-ghost" onClick={handlePause} title="Pause Integration">
-                            <Pause size={18} />
-                        </button>
-                    ) : integration.status === 'paused' ? (
-                        <button className="btn btn-ghost" onClick={handleResume} title="Resume Integration">
-                            <Play size={18} />
-                        </button>
-                    ) : null}
-                    <button className="btn btn-primary" onClick={handleSync}>
-                        <Zap size={18} />
-                        Sync Now
-                    </button>
-                    <button className="btn btn-danger btn-outline" onClick={() => setShowDeleteIntegrationConfirm(true)} title="Delete">
-                        <Trash2 size={18} />
+    return (
+        <div className="page-container">
+            {/* Header Section */}
+            <header className="page-header">
+                <div className="header-nav">
+                    <button className="btn btn-ghost" onClick={() => navigate('/dashboard')}>
+                        <ArrowLeft size={18} />
+                        Back to Dashboard
                     </button>
                 </div>
-            </div>
 
-            {/* Overview */}
-            <div className="detail-section">
-                <h2>Overview</h2>
-                <div className="overview-grid">
-                    {integration.sync_direction === 'mysql_to_sheets' ? (
-                        <>
+                <div className="header-content">
+                    <div className="header-title-group">
+                        <h1>{integration.name}</h1>
+                        {getStatusBadge(integration.status)}
+                    </div>
+
+                    <div className="header-actions">
+                        <button className="btn btn-ghost" onClick={() => { loadIntegration(); loadLogs(); }} title="Refresh Data">
+                            <RefreshCw size={18} />
+                        </button>
+                        {integration.status === 'active' ? (
+                            <button className="btn btn-ghost" onClick={handlePause} title="Pause Integration">
+                                <Pause size={18} />
+                            </button>
+                        ) : integration.status === 'paused' ? (
+                            <button className="btn btn-ghost" onClick={handleResume} title="Resume Integration">
+                                <Play size={18} />
+                            </button>
+                        ) : null}
+                        <button className="btn btn-primary" onClick={handleSync}>
+                            <Zap size={18} />
+                            Sync Now
+                        </button>
+                        <button className="btn btn-danger btn-outline" onClick={() => setShowDeleteIntegrationConfirm(true)} title="Delete">
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content Info */}
+            <div className="page-content">
+                {/* Overview Section */}
+                <section className="detail-section">
+                    <h2>Overview</h2>
+                    <div className="overview-container">
+                        <div className="overview-card-group">
+                            {/* Source */}
                             <div className="overview-card">
-                                <div className="overview-icon mysql">
-                                    <Database size={24} />
+                                <div className={`overview-icon ${integration.sync_direction === 'mysql_to_sheets' ? 'mysql' : ''}`}>
+                                    {integration.sync_direction === 'mysql_to_sheets' ? <Database size={24} /> : <Sheet size={24} />}
                                 </div>
                                 <div className="overview-content">
-                                    <span className="overview-label">Source Table</span>
-                                    <span className="overview-value">{integration.table_name}</span>
+                                    <span className="overview-label">
+                                        {integration.sync_direction === 'mysql_to_sheets' ? 'Source Table' :
+                                            integration.sync_direction === 'bidirectional' ? 'Sheet' : 'Source Sheet'}
+                                    </span>
+                                    <span className="overview-value">
+                                        {integration.sync_direction === 'mysql_to_sheets' ? integration.table_name : integration.sheet_name}
+                                    </span>
                                 </div>
                             </div>
 
                             <div className="overview-arrow">
-                                <ArrowRight size={24} />
+                                {integration.sync_direction === 'bidirectional' ? <ArrowLeftRight size={24} /> : <ArrowRight size={24} />}
                             </div>
 
+                            {/* Target */}
                             <div className="overview-card">
-                                <div className="overview-icon">
-                                    <Sheet size={24} />
+                                <div className={`overview-icon ${integration.sync_direction === 'sheets_to_mysql' ? 'mysql' : ''}`}>
+                                    {integration.sync_direction === 'sheets_to_mysql' ? <Database size={24} /> : <Sheet size={24} />}
                                 </div>
                                 <div className="overview-content">
-                                    <span className="overview-label">Target Sheet</span>
-                                    <span className="overview-value">{integration.sheet_name}</span>
+                                    <span className="overview-label">
+                                        {integration.sync_direction === 'sheets_to_mysql' ? 'Target Table' :
+                                            integration.sync_direction === 'bidirectional' ? 'Table' : 'Target Sheet'}
+                                    </span>
+                                    <span className="overview-value">
+                                        {integration.sync_direction === 'sheets_to_mysql' ? integration.table_name : integration.sheet_name}
+                                    </span>
                                 </div>
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="overview-card">
-                                <div className="overview-icon">
-                                    <Sheet size={24} />
-                                </div>
-                                <div className="overview-content">
-                                    <span className="overview-label">{integration.sync_direction === 'bidirectional' ? 'Sheet' : 'Source Sheet'}</span>
-                                    <span className="overview-value">{integration.sheet_name}</span>
-                                </div>
-                            </div>
+                        </div>
 
-                            <div className="overview-arrow">
-                                {integration.sync_direction === 'bidirectional' ? (
-                                    <ArrowLeftRight size={24} />
-                                ) : (
-                                    <ArrowRight size={24} />
-                                )}
+                        <div className="overview-meta-group">
+                            <div className="meta-item">
+                                <span className="meta-label">Sync Direction:</span>
+                                <span className="meta-value">
+                                    {integration.sync_direction === 'sheets_to_mysql' ? 'Sheets → MySQL' :
+                                        integration.sync_direction === 'mysql_to_sheets' ? 'MySQL → Sheets' :
+                                            'Bidirectional'}
+                                </span>
                             </div>
-
-                            <div className="overview-card">
-                                <div className="overview-icon mysql">
-                                    <Database size={24} />
-                                </div>
-                                <div className="overview-content">
-                                    <span className="overview-label">{integration.sync_direction === 'bidirectional' ? 'Table' : 'Target Table'}</span>
-                                    <span className="overview-value">{integration.table_name}</span>
-                                </div>
+                            <div className="meta-item">
+                                <span className="meta-label">Last Sync:</span>
+                                <span className="meta-value">{formatDate(integration.last_sync_at)}</span>
                             </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="overview-meta">
-                    <div className="meta-item">
-                        <span className="meta-label">Sync Direction:</span>
-                        <span className="meta-value">
-                            {integration.sync_direction === 'sheets_to_mysql' ? 'Sheets → MySQL' :
-                                integration.sync_direction === 'mysql_to_sheets' ? 'MySQL → Sheets' :
-                                    'Bidirectional'}
-                        </span>
+                        </div>
                     </div>
-                    <div className="meta-item">
-                        <span className="meta-label">Last Sync:</span>
-                        <span className="meta-value">{formatDate(integration.last_sync_at)}</span>
-                    </div>
-                </div>
-            </div>
+                </section>
 
-            {/* Column Mappings */}
-            <div className="detail-section">
-                <h2>Column Mappings</h2>
-                <div className="mappings-card">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Sheet Column</th>
-                                <th>MySQL Column</th>
-                                <th>Data Type</th>
-                                <th>Primary Key</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mappings.map(mapping => (
-                                <tr key={mapping.id}>
-                                    <td>{mapping.sheet_column}</td>
-                                    <td><code>{mapping.mysql_column}</code></td>
-                                    <td><span className="badge badge-neutral">{mapping.data_type}</span></td>
-                                    <td>{mapping.is_primary_key && <CheckCircle size={16} className="pk-icon" />}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Data Tables Section */}
-            <div className="detail-section data-tables-section">
-                <h2>Table Data</h2>
-                <p className="data-tables-info">View and edit data in both tables. Changes are automatically synced after each edit.</p>
-
-                <div className="data-tables-grid">
-                    {/* Google Sheets Data */}
-                    <DataTableView
-                        title={`Sheet: ${integration.sheet_name}`}
-                        icon={<Sheet size={20} />}
-                        headers={sheetData.headers}
-                        rows={sheetData.rows}
-                        loading={loadingSheetData}
-                        onRefresh={loadSheetData}
-                        onAddRow={async (row) => {
-                            await api.google.insertRow(
-                                integration.google_connection_id,
-                                integration.spreadsheet_id,
-                                integration.sheet_name,
-                                sheetData.headers,
-                                row
-                            );
-                        }}
-                        onUpdateRow={async (rowIndex, row) => {
-                            // rowIndex is 0-based in our data, but sheets API uses 1-based (2 = first data row)
-                            await api.google.updateRow(
-                                integration.google_connection_id,
-                                integration.spreadsheet_id,
-                                integration.sheet_name,
-                                rowIndex + 2, // Add 2: +1 for header row, +1 for 0-indexing
-                                sheetData.headers,
-                                row
-                            );
-                        }}
-                        onDeleteRow={async (rowIndex) => {
-                            await api.google.deleteRow(
-                                integration.google_connection_id,
-                                integration.spreadsheet_id,
-                                integration.sheet_name,
-                                rowIndex + 2 // Add 2: +1 for header row, +1 for 0-indexing
-                            );
-                        }}
-                        onSync={handleSyncAndRefresh}
-                    />
-
-                    {/* MySQL Data */}
-                    <DataTableView
-                        title={`Table: ${integration.table_name}`}
-                        icon={<Database size={20} />}
-                        headers={mysqlData.columns}
-                        rows={mysqlData.rows}
-                        primaryKeyColumn={getPrimaryKeyColumn() || undefined}
-                        loading={loadingMysqlData}
-                        onRefresh={loadMysqlData}
-                        onAddRow={async (row) => {
-                            await api.mysql.insertRow(
-                                integration.mysql_connection_id,
-                                integration.table_name,
-                                row
-                            );
-                        }}
-                        onUpdateRow={async (rowIndex, row) => {
-                            const pkColumn = getPrimaryKeyColumn();
-                            if (!pkColumn) {
-                                throw new Error('No primary key defined for this table');
-                            }
-                            const pkValue = String(mysqlData.rows[rowIndex][pkColumn]);
-                            await api.mysql.updateRow(
-                                integration.mysql_connection_id,
-                                integration.table_name,
-                                pkColumn,
-                                pkValue,
-                                row
-                            );
-                        }}
-                        onDeleteRow={async (_rowIndex, row) => {
-                            const pkColumn = getPrimaryKeyColumn();
-                            if (!pkColumn) {
-                                throw new Error('No primary key defined for this table');
-                            }
-                            const pkValue = String(row[pkColumn]);
-                            await api.mysql.deleteRow(
-                                integration.mysql_connection_id,
-                                integration.table_name,
-                                pkColumn,
-                                pkValue
-                            );
-                        }}
-                        onSync={handleSyncAndRefresh}
-                    />
-                </div>
-            </div>
-
-            {/* Sync Logs */}
-            <div className="detail-section">
-                <h2>Sync History</h2>
-                {logs.length === 0 ? (
-                    <div className="no-logs">
-                        <Clock size={24} />
-                        <p>No sync history yet</p>
-                    </div>
-                ) : (
-                    <div className="logs-card">
-                        <table className="table logs-table">
+                {/* Column Mappings */}
+                <section className="detail-section">
+                    <h2>Column Mappings</h2>
+                    <div className="mappings-card">
+                        <table className="table">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
-                                    <th>Direction</th>
-                                    <th>Processed</th>
-                                    <th>Inserted</th>
-                                    <th>Updated</th>
-                                    <th>Deleted</th>
-                                    <th>Started</th>
-                                    <th>Duration</th>
+                                    <th>Sheet Column</th>
+                                    <th>MySQL Column</th>
+                                    <th>Data Type</th>
+                                    <th>Primary Key</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {logs.map(log => (
-                                    <tr key={log.id}>
-                                        <td>
-                                            <div className="log-status">
-                                                {getLogStatusIcon(log.status)}
-                                                <span>{log.status}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {log.direction === 'sheets_to_mysql' ? '→ MySQL' : '→ Sheets'}
-                                        </td>
-                                        <td>{log.rows_processed}</td>
-                                        <td className="count-insert">{log.rows_inserted}</td>
-                                        <td className="count-update">{log.rows_updated}</td>
-                                        <td className="count-delete">{log.rows_deleted}</td>
-                                        <td>{new Date(log.started_at).toLocaleString()}</td>
-                                        <td>
-                                            {log.completed_at
-                                                ? `${Math.round((new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000)}s`
-                                                : '-'}
-                                        </td>
+                                {mappings.map(mapping => (
+                                    <tr key={mapping.id}>
+                                        <td>{mapping.sheet_column}</td>
+                                        <td><code>{mapping.mysql_column}</code></td>
+                                        <td><span className="badge badge-neutral">{mapping.data_type}</span></td>
+                                        <td>{mapping.is_primary_key && <CheckCircle size={16} className="pk-icon" />}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                )}
+                </section>
+
+                {/* Data Tables */}
+                <section className="detail-section data-tables-section">
+                    <h2>Table Data View</h2>
+                    <p className="data-tables-info">Real-time view of your data sources. Edits are synced automatically.</p>
+
+                    <div className="data-tables-grid">
+                        <DataTableView
+                            title={`Sheet: ${integration.sheet_name}`}
+                            icon={<Sheet size={20} />}
+                            headers={sheetData.headers}
+                            rows={sheetData.rows}
+                            loading={loadingSheetData}
+                            onRefresh={loadSheetData}
+                            onAddRow={async (row) => {
+                                await api.google.insertRow(
+                                    integration.google_connection_id,
+                                    integration.spreadsheet_id,
+                                    integration.sheet_name,
+                                    sheetData.headers,
+                                    row
+                                );
+                            }}
+                            onUpdateRow={async (rowIndex, row) => {
+                                await api.google.updateRow(
+                                    integration.google_connection_id,
+                                    integration.spreadsheet_id,
+                                    integration.sheet_name,
+                                    rowIndex + 2,
+                                    sheetData.headers,
+                                    row
+                                );
+                            }}
+                            onDeleteRow={async (rowIndex) => {
+                                await api.google.deleteRow(
+                                    integration.google_connection_id,
+                                    integration.spreadsheet_id,
+                                    integration.sheet_name,
+                                    rowIndex + 2
+                                );
+                            }}
+                            onSync={handleSyncAndRefresh}
+                        />
+
+                        <DataTableView
+                            title={`Table: ${integration.table_name}`}
+                            icon={<Database size={20} />}
+                            headers={mysqlData.columns}
+                            rows={mysqlData.rows}
+                            primaryKeyColumn={getPrimaryKeyColumn() || undefined}
+                            loading={loadingMysqlData}
+                            onRefresh={loadMysqlData}
+                            onAddRow={async (row) => {
+                                await api.mysql.insertRow(
+                                    integration.mysql_connection_id,
+                                    integration.table_name,
+                                    row
+                                );
+                            }}
+                            onUpdateRow={async (rowIndex, row) => {
+                                const pkColumn = getPrimaryKeyColumn();
+                                if (!pkColumn) throw new Error('No primary key defined');
+                                const pkValue = String(mysqlData.rows[rowIndex][pkColumn]);
+                                await api.mysql.updateRow(
+                                    integration.mysql_connection_id,
+                                    integration.table_name,
+                                    pkColumn,
+                                    pkValue,
+                                    row
+                                );
+                            }}
+                            onDeleteRow={async (_rowIndex, row) => {
+                                const pkColumn = getPrimaryKeyColumn();
+                                if (!pkColumn) throw new Error('No primary key defined');
+                                const pkValue = String(row[pkColumn]);
+                                await api.mysql.deleteRow(
+                                    integration.mysql_connection_id,
+                                    integration.table_name,
+                                    pkColumn,
+                                    pkValue
+                                );
+                            }}
+                            onSync={handleSyncAndRefresh}
+                        />
+                    </div>
+                </section>
+
+                {/* Sync History */}
+                <section className="detail-section">
+                    <h2>Sync History</h2>
+                    {logs.length === 0 ? (
+                        <div className="no-logs">
+                            <Clock size={24} />
+                            <p>No sync history yet</p>
+                        </div>
+                    ) : (
+                        <div className="logs-card">
+                            <table className="table logs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Direction</th>
+                                        <th>Processed</th>
+                                        <th>Inserted</th>
+                                        <th>Updated</th>
+                                        <th>Deleted</th>
+                                        <th>Started</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {logs.map(log => (
+                                        <tr key={log.id}>
+                                            <td>
+                                                <div className="log-status">
+                                                    {getLogStatusIcon(log.status)}
+                                                    <span>{log.status}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {log.direction === 'sheets_to_mysql' ? '→ MySQL' : '→ Sheets'}
+                                            </td>
+                                            <td>{log.rows_processed}</td>
+                                            <td className="count-insert">{log.rows_inserted}</td>
+                                            <td className="count-update">{log.rows_updated}</td>
+                                            <td className="count-delete">{log.rows_deleted}</td>
+                                            <td>{new Date(log.started_at).toLocaleString()}</td>
+                                            <td>
+                                                {log.completed_at
+                                                    ? `${Math.round((new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000)}s`
+                                                    : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
             </div>
 
-            {/* Delete Integration Confirmation Modal */}
             <ConfirmModal
                 isOpen={showDeleteIntegrationConfirm}
                 title="Delete Integration"
