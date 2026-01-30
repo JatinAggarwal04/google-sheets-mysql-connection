@@ -13,6 +13,7 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { GoogleDisclaimerModal } from '../components/GoogleDisclaimerModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import './Connections.css';
 
 interface GoogleConnection {
@@ -49,6 +50,19 @@ export function ConnectionsPage() {
     const [formLoading, setFormLoading] = useState(false);
     const [showGoogleDisclaimer, setShowGoogleDisclaimer] = useState(false);
 
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        type: 'google' | 'mysql' | null;
+        id: string | null;
+        loading: boolean;
+    }>({
+        isOpen: false,
+        type: null,
+        id: null,
+        loading: false,
+    });
+    const [connectLoading, setConnectLoading] = useState(false);
+
     useEffect(() => {
         loadConnections();
     }, []);
@@ -69,13 +83,14 @@ export function ConnectionsPage() {
         }
     };
 
-    const handleConnectGoogle = () => {
+    const handleConnectGoogle = async () => {
         setShowGoogleDisclaimer(true);
     };
 
     const proceedWithGoogleConnect = async () => {
         try {
             setShowGoogleDisclaimer(false);
+            setConnectLoading(true);
             const { authUrl } = await api.auth.getGoogleAuthUrl();
             const width = 600;
             const height = 700;
@@ -90,6 +105,7 @@ export function ConnectionsPage() {
 
             if (!popup) {
                 setError('Popup blocked! Please allow popups for this site.');
+                setConnectLoading(false);
                 return;
             }
 
@@ -101,10 +117,12 @@ export function ConnectionsPage() {
                     window.removeEventListener('message', messageHandler);
                     clearInterval(checkClosedInterval);
                     await loadConnections();
+                    setConnectLoading(false);
                 } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
                     window.removeEventListener('message', messageHandler);
                     clearInterval(checkClosedInterval);
                     setError(event.data.error || 'Google connection failed');
+                    setConnectLoading(false);
                 }
             };
 
@@ -115,45 +133,49 @@ export function ConnectionsPage() {
                 if (popup.closed) {
                     clearInterval(checkClosedInterval);
                     window.removeEventListener('message', messageHandler);
-                    // Don't set error here immediately as it might have closed after success
-                    // The success handler handles the clean up.
-                    // But if we are here and still listening, it means it closed without message.
-                    // We can check if we should show error.
-                    // However, due to race conditions, it's safer to just rely on user re-trying or explicit error messages.
-                    // Or set a timeout to check if connections updated? 
-                    // Let's reload connections just in case.
+                    // If we're still loading, it means we didn't get a success/error message
+                    // but the window closed.
                     loadConnections();
+                    setConnectLoading(false);
                 }
             }, 1000);
 
         } catch (err: any) {
             setError(err.message || 'Failed to initiate Google connection');
+            setConnectLoading(false);
         }
     };
 
-    const handleDeleteGoogleConnection = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this Google connection?')) return;
+    const initiateDeleteGoogle = (id: string) => {
+        setDeleteModal({ isOpen: true, type: 'google', id, loading: false });
+    };
 
+    const initiateDeleteMysql = (id: string) => {
+        setDeleteModal({ isOpen: true, type: 'mysql', id, loading: false });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.id || !deleteModal.type) return;
+
+        setDeleteModal(prev => ({ ...prev, loading: true }));
         try {
-            await api.google.deleteConnection(id);
+            if (deleteModal.type === 'google') {
+                await api.google.deleteConnection(deleteModal.id);
+            } else {
+                await api.mysql.deleteConnection(deleteModal.id);
+            }
             await loadConnections();
+            setDeleteModal({ isOpen: false, type: null, id: null, loading: false });
         } catch (err: any) {
-            // Extract error message if available
             console.error('Delete error:', err);
             const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to delete connection';
             setError(message);
+            setDeleteModal(prev => ({ ...prev, isOpen: false, loading: false })); // Close modal on error to show global error
         }
     };
 
-    const handleDeleteMysqlConnection = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this MySQL connection?')) return;
-
-        try {
-            await api.mysql.deleteConnection(id);
-            await loadConnections();
-        } catch (err) {
-            setError('Failed to delete connection');
-        }
+    const handleDeleteMysqlConnection = async (id: string) => { // Kept for reference but unused in new flow
+        initiateDeleteMysql(id);
     };
 
     const handleCreateMysqlConnection = async (e: React.FormEvent) => {
@@ -196,6 +218,19 @@ export function ConnectionsPage() {
                 onConfirm={proceedWithGoogleConnect}
             />
 
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                title={deleteModal.type === 'google' ? 'Disconnect Google Account' : 'Delete Database Connection'}
+                message={deleteModal.type === 'google'
+                    ? 'Are you sure you want to disconnect this Google account? Any active integrations using this account will stop working.'
+                    : 'Are you sure you want to delete this database connection? Any active integrations using this database will stop working.'}
+                confirmLabel="Delete"
+                isDestructive={true}
+                isLoading={deleteModal.loading}
+                onClose={() => setDeleteModal({ isOpen: false, type: null, id: null, loading: false })}
+                onConfirm={handleConfirmDelete}
+            />
+
             <div className="page-header">
                 <h1>Connections</h1>
                 <p>Manage your Google and MySQL connections</p>
@@ -214,9 +249,9 @@ export function ConnectionsPage() {
                 <div className="connections-section">
                     <div className="section-header">
                         <h2><Sheet size={20} /> Google Accounts</h2>
-                        <button className="btn btn-outline btn-sm" onClick={handleConnectGoogle}>
-                            <Plus size={16} />
-                            Connect
+                        <button className="btn btn-outline btn-sm" onClick={handleConnectGoogle} disabled={connectLoading}>
+                            {connectLoading ? <div className="spinner-sm" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} /> : <Plus size={16} />}
+                            {connectLoading ? ' Connecting...' : 'Connect'}
                         </button>
                     </div>
 
@@ -227,9 +262,9 @@ export function ConnectionsPage() {
                     ) : googleConnections.length === 0 ? (
                         <div className="empty-connections">
                             <p>No Google accounts connected</p>
-                            <button className="btn btn-primary" onClick={handleConnectGoogle}>
-                                <Plus size={18} />
-                                Connect Google Account
+                            <button className="btn btn-primary" onClick={handleConnectGoogle} disabled={connectLoading}>
+                                {connectLoading ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <Plus size={18} />}
+                                {connectLoading ? ' Connecting...' : ' Connect Google Account'}
                             </button>
                         </div>
                     ) : (
@@ -254,7 +289,7 @@ export function ConnectionsPage() {
                                     </div>
                                     <button
                                         className="btn btn-ghost btn-icon btn-danger-text"
-                                        onClick={() => handleDeleteGoogleConnection(conn.id)}
+                                        onClick={() => initiateDeleteGoogle(conn.id)}
                                     >
                                         <Trash2 size={16} />
                                     </button>
@@ -397,7 +432,7 @@ export function ConnectionsPage() {
                                     </div>
                                     <button
                                         className="btn btn-ghost btn-icon btn-danger-text"
-                                        onClick={() => handleDeleteMysqlConnection(conn.id)}
+                                        onClick={() => initiateDeleteMysql(conn.id)}
                                     >
                                         <Trash2 size={16} />
                                     </button>

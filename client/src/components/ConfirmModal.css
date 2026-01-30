@@ -1,0 +1,42 @@
+.confirm-modal {
+    max-width: 400px;
+    text-align: center;
+}
+
+.modal-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    background-color: var(--warning-bg);
+    color: var(--warning);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--space-4);
+}
+
+.modal-icon-wrapper.destructive {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25em;
+    color: var(--text-primary);
+}
+
+.modal-body {
+    margin: var(--space-4) 0 var(--space-6);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.spinner-sm {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
