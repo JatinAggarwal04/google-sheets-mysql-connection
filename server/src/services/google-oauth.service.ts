@@ -109,7 +109,7 @@ export async function saveGoogleConnection(
 ): Promise<GoogleConnection> {
     const supabase = getSupabaseAdmin();
 
-    const encryptedTokens = encryptCredentials(tokens);
+    const encryptedTokens = encryptCredentials(tokens as unknown as Record<string, unknown>);
 
     // Upsert connection
     const { data, error } = await supabase
@@ -205,7 +205,7 @@ export async function getAuthenticatedClient(
             updatedTokens.refresh_token = newTokens.refresh_token;
         }
 
-        const encryptedTokens = encryptCredentials(updatedTokens);
+        const encryptedTokens = encryptCredentials(updatedTokens as unknown as Record<string, unknown>);
 
         await supabase
             .from('google_connections')
