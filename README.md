@@ -19,8 +19,14 @@ SyncHub is a production-grade, multi-tenant SaaS platform engineered for reliabl
 - **🏗️ Robust Architecture**:
     - **Queue-Based Processing**: Powered by **BullMQ** & **Redis** for fault tolerance and high throughput.
     - **Atomic Operations**: MySQL transactions ensure data integrity.
+    - **Auto-Recovery**: Automatic retries with exponential backoff for failed sync jobs (e.g., API timeouts).
+    - **Constraint Protection**: Prevents deletion of active connections to maintain foreign key integrity.
 - **🧩 Smart Conflict Resolution**: Configurable strategies (Latest Wins, Sheet Wins, DB Wins) to handle concurrent edits.
 - **👥 Multi-Tenancy**: Complete data isolation between accounts using Row Level Security (RLS) patterns.
+- **🛡️ Data Integrity & Safety**:
+    - **Empty Source Validation**: Intelligent "No Column" checks prevent syncing from empty sources, protecting against data wipes.
+    - **Dynamic Initial Source**: Explicit control over which side (Sheet vs MySQL) acts as the "Source of Truth" during initial setup.
+    - **One-Way Enforcement**: Strict validation blocking syncs from empty sources to populated destinations.
 
 ## 🛠️ Tech Stack
 
@@ -132,9 +138,13 @@ Manage your synced data visually with supported CRUD operations.
 - **Bot Protection**: Login and Signup endpoints are protected by Cloudflare Turnstile.
 - **Credential Encryption**: Database credentials for user's MySQL connections are never stored in plain text.
 
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+### Demo Database
+Want to try it out? Use this read-only MySQL database to test the connection:
+- **Host**: `switchyard.proxy.rlwy.net`
+- **Port**: `31470`
+- **User**: `root`
+- **Password**: `sBxhTgikZNAEEuOSMhaZsJeGIzqqQtYS`
+- **Protocol**: TCP (Railway)
 
 ## 📝 License
 
