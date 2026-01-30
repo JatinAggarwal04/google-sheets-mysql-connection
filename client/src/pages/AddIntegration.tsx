@@ -832,12 +832,13 @@ export function AddIntegrationPage() {
                         <div className="form-group" style={{ marginBottom: 'var(--space-6)' }}>
                             <label className="form-label">Sync Direction</label>
                             <div className="radio-group">
-                                <label className="radio-option">
+                                <label className={`radio-option ${isSheetEmpty ? 'disabled' : ''}`}>
                                     <input
                                         type="radio"
                                         name="syncDirection"
                                         value="sheets_to_mysql"
                                         checked={syncDirection === 'sheets_to_mysql'}
+                                        disabled={isSheetEmpty}
                                         onChange={async () => {
                                             setSyncDirection('sheets_to_mysql');
                                             setInitialSyncSource('sheets');
@@ -846,13 +847,15 @@ export function AddIntegrationPage() {
                                         }}
                                     />
                                     <span>Sheets → MySQL (one-way)</span>
+                                    {isSheetEmpty && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                 </label>
-                                <label className="radio-option">
+                                <label className={`radio-option ${(isTableEmpty) ? 'disabled' : ''}`}>
                                     <input
                                         type="radio"
                                         name="syncDirection"
                                         value="mysql_to_sheets"
                                         checked={syncDirection === 'mysql_to_sheets'}
+                                        disabled={isTableEmpty}
                                         onChange={() => {
                                             setSyncDirection('mysql_to_sheets');
                                             setInitialSyncSource('mysql');
@@ -860,6 +863,7 @@ export function AddIntegrationPage() {
                                         }}
                                     />
                                     <span>MySQL → Sheets (one-way)</span>
+                                    {(isTableEmpty) && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                 </label>
                                 <label className="radio-option">
                                     <input
