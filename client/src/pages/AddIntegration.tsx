@@ -464,7 +464,7 @@ export function AddIntegrationPage() {
                     setError('Cannot use empty Google Sheet as source for One-Way sync');
                     return;
                 }
-                if (syncDirection === 'mysql_to_sheets' && isTableEmpty && !createNewTable) {
+                if (syncDirection === 'mysql_to_sheets' && isTableEmpty) {
                     setError('Cannot use empty MySQL Table as source for One-Way sync');
                     return;
                 }
@@ -891,20 +891,20 @@ export function AddIntegrationPage() {
                                         <span>Google Sheets (overwrite Database)</span>
                                         {isSheetEmpty && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                     </label>
-                                    <label className={`radio-option ${(isTableEmpty && !createNewTable) ? 'disabled' : ''}`}>
+                                    <label className={`radio-option ${(isTableEmpty) ? 'disabled' : ''}`}>
                                         <input
                                             type="radio"
                                             name="initialSyncSource"
                                             value="mysql"
                                             checked={initialSyncSource === 'mysql'}
-                                            disabled={isTableEmpty && !createNewTable}
+                                            disabled={isTableEmpty}
                                             onChange={() => {
                                                 setInitialSyncSource('mysql');
                                                 generateMappings('mysql', undefined, mysqlSchema);
                                             }}
                                         />
                                         <span>MySQL (overwrite Sheet)</span>
-                                        {(isTableEmpty && !createNewTable) && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
+                                        {(isTableEmpty) && <span className="warning-text" style={{ marginLeft: '8px', color: 'var(--error-500)', fontSize: '0.8em' }}>(Empty)</span>}
                                     </label>
                                 </div>
                             </div>
