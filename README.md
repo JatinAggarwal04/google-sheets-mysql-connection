@@ -52,22 +52,32 @@ SyncHub is a production-grade, multi-tenant SaaS platform engineered for reliabl
 Running on a decoupled client-server architecture, communicating via RESTful APIs.
 
 ```mermaid
-graph TD
-    Client[React Client] -->|REST API| LB[Load Balancer / API Gateway]
-    LB --> Server[Express Server Cluster]
-    
-    subgraph Services
-        Server -->|Auth Check| Supabase[Supabase Auth]
-        Server -->|Jobs| Redis[Redis Queue]
-        Server -->|Read/Write| MySQL[(MySQL Database)]
-        Server -->|Sync API| Google[Google Sheets API]
+graph LR
+    subgraph Frontend
+        Client[React Client]
     end
-    
-    subgraph Workers
-        Worker[Sync Worker] -->|Consume| Redis
-        Worker -->|ETL| MySQL
-        Worker -->|ETL| Google
+
+    subgraph Backend ["Backend API"]
+        Server[Express Server]
+        Auth[Supabase (Auth & App Data)]
+        Queue[Redis Queue]
     end
+
+    subgraph "Sync Engine"
+        Worker[Worker Service]
+    end
+
+    subgraph "External Systems"
+        Sheets[Google Sheets]
+        MySQL[(MySQL Database)]
+    end
+
+    Client -->|1. User Action| Server
+    Server -->|2. Verify| Auth
+    Server -->|3. Queue Job| Queue
+    Queue -->|4. Process| Worker
+    Worker <-->|5. Sync Data| Sheets
+    Worker <-->|6. Sync Data| MySQL
 ```
 
 ## 🚀 Getting Started
