@@ -59,6 +59,7 @@ export function AddIntegrationPage() {
     const [error, setError] = useState<string | null>(null);
 
     const [isGoogleConnecting, setIsGoogleConnecting] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(true); // Default to true as we load on mount
     const [isMysqlSelecting, setIsMysqlSelecting] = useState(false);
     const [isSheetEmpty, setIsSheetEmpty] = useState(false);
     const [isTableEmpty, setIsTableEmpty] = useState(false);
@@ -118,10 +119,13 @@ export function AddIntegrationPage() {
 
     const loadGoogleConnections = async () => {
         try {
+            setIsGoogleLoading(true);
             const data = await api.google.listConnections();
             setGoogleConnections(data);
         } catch (err) {
             console.error('Failed to load Google connections:', err);
+        } finally {
+            setIsGoogleLoading(false);
         }
     };
 
@@ -546,25 +550,32 @@ export function AddIntegrationPage() {
                         <p>Select a connected Google account or connect a new one</p>
 
                         <div className="connection-list">
-                            {googleConnections.map(conn => (
-                                <button
-                                    key={conn.id}
-                                    className={`connection-option ${selectedGoogleConnection === conn.id ? 'selected' : ''}`}
-                                    onClick={() => setSelectedGoogleConnection(conn.id)}
-                                    disabled={isGoogleConnecting}
-                                >
-                                    <div className="connection-icon google">
-                                        <Sheet size={20} />
-                                    </div>
-                                    <div className="connection-info">
-                                        <span className="connection-name">{conn.email}</span>
-                                        <span className="connection-type">Google Account</span>
-                                    </div>
-                                    {selectedGoogleConnection === conn.id && (
-                                        <Check size={20} className="connection-check" />
-                                    )}
-                                </button>
-                            ))}
+                            {isGoogleLoading ? (
+                                <div className="loading-placeholder">
+                                    <Loader2 size={24} className="spin text-primary" />
+                                    <span>Loading connected accounts...</span>
+                                </div>
+                            ) : (
+                                googleConnections.map(conn => (
+                                    <button
+                                        key={conn.id}
+                                        className={`connection-option ${selectedGoogleConnection === conn.id ? 'selected' : ''}`}
+                                        onClick={() => setSelectedGoogleConnection(conn.id)}
+                                        disabled={isGoogleConnecting}
+                                    >
+                                        <div className="connection-icon google">
+                                            <Sheet size={20} />
+                                        </div>
+                                        <div className="connection-info">
+                                            <span className="connection-name">{conn.email}</span>
+                                            <span className="connection-type">Google Account</span>
+                                        </div>
+                                        {selectedGoogleConnection === conn.id && (
+                                            <Check size={20} className="connection-check" />
+                                        )}
+                                    </button>
+                                ))
+                            )}
 
                             <button
                                 className="connection-option add-new"
